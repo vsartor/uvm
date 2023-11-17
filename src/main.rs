@@ -1,9 +1,4 @@
-#[macro_use]
-mod log_macros;
-
-mod asm;
-mod parser;
-mod vm;
+use uvm::{asm, parser, vm};
 
 extern crate clap;
 use clap::{Arg, ArgAction, Command};
@@ -25,15 +20,23 @@ fn main() {
                 .help("Prints the output of the program only at the end of execution")
                 .action(ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("step")
+                .short('s')
+                .long("step")
+                .help("Executes the program in steps, waiting for user input between each step")
+                .action(ArgAction::SetTrue),
+        )
         .get_matches();
 
     let program_path = matches.get_one::<String>("program_path").unwrap();
     let batched_output = matches.get_flag("batched_output");
+    let step = matches.get_flag("step");
 
-    run(program_path.clone(), batched_output);
+    run(program_path.clone(), batched_output, step);
 }
 
-fn run(input_path: String, batched_output: bool) {
+fn run(input_path: String, batched_output: bool, step: bool) {
     let code = parser::parse_file(input_path);
     if code.is_err() {
         let err = code.unwrap_err();
@@ -45,6 +48,9 @@ fn run(input_path: String, batched_output: bool) {
     asm::display_code(&code);
 
     let mut vm = vm::VM::new(code);
+    if step {
+        vm = vm.step_by_step();
+    }
     if batched_output {
         vm = vm.capture_output();
     }

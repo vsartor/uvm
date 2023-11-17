@@ -1,0 +1,21 @@
+// This basically tests ADD/SUB/MUL/DIV/MOD with the aid of SET
+
+SET	10	r0
+SET	12	r1
+ADD	r0	r1	// r1 = 22
+
+SET	32	r2
+SUB	r1	r2	// r2 = 10
+
+SET	5	r3
+MUL	r2	r3	// r3 = 50
+
+SET	250	r4
+DIV	r3	r4	// r4 = 5
+
+SET	8	r5
+MOD	r4	r5	// r5 = 3
+
+DBGREGS
+
+HALT

@@ -6,6 +6,8 @@ pub struct VM {
     regs: [i64; NUM_REGISTERS as usize],
     code: Vec<asm::Code>,
     pc: usize,
+    cmp: i8,
+    step_by_step: bool,
     capture_output: bool,
 }
 
@@ -20,6 +22,8 @@ impl VM {
             regs: [0; NUM_REGISTERS as usize],
             code,
             pc: 0,
+            cmp: 0,
+            step_by_step: false,
             capture_output: false,
         }
     }
@@ -29,13 +33,22 @@ impl VM {
         self
     }
 
+    pub fn step_by_step(mut self) -> Self {
+        self.step_by_step = true;
+        self
+    }
+
+    pub fn get_registers(&self) -> [i64; NUM_REGISTERS as usize] {
+        self.regs
+    }
+
     fn consume_op(&mut self) -> Result<asm::OpCode, String> {
         match self.code[self.pc] {
             asm::Code::Op(op) => {
                 self.pc += 1;
                 Ok(op)
             }
-            _ => Err(err!("Expected an opcode, but got {}", self.code[self.pc])),
+            _ => Err(err!("Expected an opcode, but got {} at {}", self.code[self.pc], self.pc)),
         }
     }
 
@@ -49,7 +62,7 @@ impl VM {
                 self.pc += 1;
                 Ok(reg)
             }
-            _ => Err(err!("Expected a register, but got {}", self.code[self.pc])),
+            _ => Err(err!("Expected a register, but got {} at {}", self.code[self.pc], self.pc)),
         }
     }
 
@@ -59,7 +72,17 @@ impl VM {
                 self.pc += 1;
                 Ok(val)
             }
-            _ => Err(err!("Expected an integer, but got {}", self.code[self.pc])),
+            _ => Err(err!("Expected an integer, but got {} at {}", self.code[self.pc], self.pc)),
+        }
+    }
+
+    fn consume_addr(&mut self) -> Result<usize, String> {
+        match self.code[self.pc] {
+            asm::Code::Addr(addr) => {
+                self.pc += 1;
+                Ok(addr)
+            }
+            _ => Err(err!("Expected an address, but got {} at {}", self.code[self.pc], self.pc)),
         }
     }
 
@@ -112,6 +135,125 @@ impl VM {
                 self.regs[reg1 as usize] += self.regs[reg0 as usize];
                 Ok(res)
             }
+            Ok(asm::OpCode::SUB) => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                self.regs[reg1 as usize] -= self.regs[reg0 as usize];
+                Ok(res)
+            }
+            Ok(asm::OpCode::MUL) => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                self.regs[reg1 as usize] *= self.regs[reg0 as usize];
+                Ok(res)
+            }
+            Ok(asm::OpCode::DIV) => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                self.regs[reg1 as usize] /= self.regs[reg0 as usize];
+                Ok(res)
+            }
+            Ok(asm::OpCode::MOD) => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                self.regs[reg1 as usize] %= self.regs[reg0 as usize];
+                Ok(res)
+            }
+            Ok(asm::OpCode::CMPL) => {
+                let val = {
+                    let val = self.consume_int();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                // Set the flag to -1, 0, or 1 depending on the comparison result.
+                self.cmp = match self.regs[reg as usize].cmp(&val) {
+                    std::cmp::Ordering::Less => -1,
+                    std::cmp::Ordering::Equal => 0,
+                    std::cmp::Ordering::Greater => 1,
+                };
+                Ok(res)
+            }
+            Ok(asm::OpCode::JMP) => {
+                let addr = {
+                    let addr = self.consume_addr();
+                    if addr.is_err() {
+                        return Err(addr.unwrap_err());
+                    }
+                    addr.unwrap()
+                };
+                self.pc = addr;
+                Ok(res)
+            }
+            Ok(asm::OpCode::JEQ) => {
+                let addr = {
+                    let addr = self.consume_addr();
+                    if addr.is_err() {
+                        return Err(addr.unwrap_err());
+                    }
+                    addr.unwrap()
+                };
+                if self.cmp == 0 {
+                    self.pc = addr;
+                }
+                Ok(res)
+            }
             Ok(asm::OpCode::DBGREG) => {
                 let reg = {
                     let reg = self.consume_reg();
@@ -137,6 +279,14 @@ impl VM {
         let mut captured_output = String::new();
 
         loop {
+            if self.step_by_step {
+                // TODO: do a decent debugger here jfc
+                println!("{}", dbg!("pc={} | cmp={} | regs={:?}", self.pc, self.cmp, self.regs));
+                println!("Press ENTER to continue...");
+                let mut input = String::new();
+                let _ = std::io::stdin().read_line(&mut input);
+            }
+
             match self.step() {
                 Ok(res) => {
                     if let Some(output) = res.output {

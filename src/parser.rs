@@ -1,15 +1,15 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::asm::{Code, OpArgT, OpCode, OP_ARG_TYPES};
 
 struct Ctxt {
     filename: String,
-    line: i64,
+    line: usize,
 }
 
 impl Ctxt {
     fn new(filename: String) -> Self {
-        Self { filename, line: -1 }
+        Self { filename, line: 0 }
     }
 
     fn inc(&mut self) {
@@ -30,16 +30,36 @@ pub fn parse_file(input_path: String) -> Result<Vec<Code>, String> {
 fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> {
     let mut code = Vec::new();
 
+    // hashmap where we store the labels and their corresponding "address"
+    let mut labels: HashMap<String, usize> = std::collections::HashMap::new();
+    // hashmap where we map where references to labels happened to the label being addressed
+    let mut label_refs: HashMap<usize, String> = std::collections::HashMap::new();
+    // after parsing the program, we substitute label_refs by the actual "address"
+
     for line in raw_code.lines() {
         ctxt.inc(); // increment line number
 
-        let line = line.trim();
+        // Trim whitespace and ignore any comments (i.e. everything starting after //)
+        let line = line.splitn(2, "//").next().unwrap().trim();
         if line.is_empty() {
             continue;
         }
 
         let mut parts = line.split_whitespace();
         let raw_op = parts.next().unwrap();
+
+        // raw_op can either be an actual op or a label, so let's check if it's a label first
+        // if it is a label, we'll skip to the next line
+        if raw_op.ends_with(":") {
+            let label = raw_op[..raw_op.len() - 1].to_string();
+            if labels.contains_key(&label) {
+                // TODO: add unit test for this behavior
+                return Err(err!("{}.{}: Label {} already defined", ctxt.filename, ctxt.line, label));
+            }
+            labels.insert(label, code.len());
+            continue;
+        }
+
         let op = OpCode::from_str(raw_op);
         if op.is_err() {
             return Err(err!("{}.{}: Expected to find an OpCode but found {}", ctxt.filename, ctxt.line, raw_op));
@@ -116,7 +136,41 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
                 code.push(Code::Reg(reg1));
                 code.push(Code::Reg(reg2));
             }
+            OpArgT::Addr => {
+                // this should be a label while parsing
+                // we'll remember that here we had this reference to a label and its address
+                // and only at the end we'll make the substitution
+                let label = parts.next();
+                if label.is_none() {
+                    // TODO: add unit test for this behavior
+                    return Err(err!(
+                        "{}.{}: {} expected to find a label but found nothing",
+                        ctxt.filename,
+                        ctxt.line,
+                        op
+                    ));
+                }
+                let label = label.unwrap();
+
+                // note that currently code.len() will point to the operation that
+                // takes in the addr, so to point to the addr itself we'll need a +1
+                label_refs.insert(code.len() + 1, label.to_string());
+
+                code.push(Code::Op(op));
+                code.push(Code::Addr(0)); // placeholder
+            }
         }
+    }
+
+    // Now, for each entry in label_refs, we'll substitute the label by its address
+    for (addr, label) in label_refs {
+        let label_addr = labels.get(&label);
+        if label_addr.is_none() {
+            // TODO: add unit test for this behavior
+            return Err(err!("Reference to label {} at addr {} found but it's not defined", label, addr));
+        }
+        let label_addr = label_addr.unwrap();
+        code[addr] = Code::Addr(*label_addr);
     }
 
     Ok(code)
@@ -186,15 +240,16 @@ fn consume_reg(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -
 fn validate_line_is_over(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -> Result<(), String> {
     let next = parts.next();
     if next.is_some() {
-        return Err(err!(
+        Err(err!(
             "{}.{}: {} expected to find end of line but got {}",
             ctxt.filename,
             ctxt.line,
             op,
             next.unwrap()
-        ));
+        ))
+    } else {
+        Ok(())
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -240,7 +295,7 @@ mod tests {
         let raw_code = "HALT\nHALT\nSET 2 r-2".to_string();
         let code = parse_string(&raw_code, Ctxt::new("fff".to_string()));
         assert!(code.is_err());
-        assert!(code.unwrap_err().contains("fff.2"));
+        assert!(code.unwrap_err().contains("fff.3"));
     }
 
     #[test]

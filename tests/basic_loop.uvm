@@ -1,0 +1,17 @@
+// This program is meant to compute (the loopy-way) the sum
+// of all integers starting from 50 and going all the way down to 1
+
+SET	50	r0	// The iteration register
+SET	0	r1	// Where we will accumulate the sum
+SET     -1	r2 	// Constant -1 since we can't use literals yet (TODO)
+
+loop:
+CMPL	0	r0	// Compares r0 (our iterator) with 0
+JEQ	end		// Jumps to .end label if comparison was equal
+ADD	r0	r1	// Accumulate r0 into r1
+ADD	r2	r0	// Decrease 1 (constant on r2) from r0
+JMP loop		// Goes back to start of the loop
+
+end:
+DBGREGS
+HALT

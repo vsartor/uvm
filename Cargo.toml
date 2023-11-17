@@ -1,5 +1,5 @@
 [package]
-name = "uvm-rs"
+name = "uvm"
 version = "0.1.0"
 edition = "2021"
 
