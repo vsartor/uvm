@@ -4,15 +4,36 @@ mod asm;
 mod parser;
 mod vm;
 
-fn main() {
-    // get command line arguments, but skip the first one (the program name)
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.len() != 1 {
-        println!("Usage: ./uvm <program> [flags]");
-        std::process::exit(1);
-    }
+extern crate clap;
+use clap::{Arg, ArgAction, Command};
 
-    let program = std::fs::read_to_string(&args[0]);
+fn main() {
+    let matches = Command::new("uvm")
+        .version("0.1.0")
+        .author("Victhor Sartório <victhor@victhor.io>")
+        .about("The Useless Virtual Machine, implemented in Rust")
+        .arg(
+            Arg::new("program_path")
+                .help("Path to the UVM assembly program to be executed")
+                .required(true),
+        )
+        .arg(
+            Arg::new("batched_output")
+                .short('b')
+                .long("batched-output")
+                .help("Prints the output of the program only at the end of execution")
+                .action(ArgAction::SetTrue),
+        )
+        .get_matches();
+
+    let program_path = matches.get_one::<String>("program_path").unwrap();
+    let batched_output = matches.get_flag("batched_output");
+
+    run(program_path, batched_output);
+}
+
+fn run(input_path: &String, batched_output: bool) {
+    let program = std::fs::read_to_string(input_path);
     if program.is_err() {
         println!("Failed to read file: {}", program.unwrap_err());
         // exit with a non-zero exit code
@@ -31,10 +52,16 @@ fn main() {
     asm::display_code(&code);
 
     let mut vm = vm::VM::new(code);
+    if batched_output {
+        vm = vm.capture_output();
+    }
 
     let result = vm.run();
     if result.is_err() {
         println!("{}", result.unwrap_err());
         std::process::exit(1);
+    }
+    if batched_output {
+        println!("{}", result.unwrap());
     }
 }

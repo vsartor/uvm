@@ -77,7 +77,8 @@ pub fn display_code(code: &Vec<Code>) {
     // We assume that the code is valid for this function and make
     // gratuitous use of unwrap().
 
-    println!("\x1b[1;33m[CODE]\x1b[0m\n┌ START");
+    println!("{}", info!("Displaying loaded code below:"));
+    println!("┌ START");
 
     let mut idx = 0;
     while idx < code.len() {

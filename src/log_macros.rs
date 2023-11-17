@@ -11,3 +11,10 @@ macro_rules! dbg {
         format!("\x1b[1;32m[DEBUG]\x1b[0m {}", format_args!($($arg)*))
     })
 }
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => ({
+        format!("\x1b[1;34m[INFO]\x1b[0m {}", format_args!($($arg)*))
+    })
+}
