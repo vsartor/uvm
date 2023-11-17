@@ -6,28 +6,36 @@ pub struct VM {
     regs: [i64; NUM_REGISTERS as usize],
     code: Vec<asm::Code>,
     pc: usize,
+    capture_output: bool,
 }
 
-pub fn new(code: Vec<asm::Code>) -> VM {
-    // If we ever get in a situation where multiple VMs need to use the same
-    // code, we can just change the current implementation to reference code
-    // instead of owning it. Doing it through ownership for now only because
-    // it's simpler.
-    VM {
-        regs: [0; NUM_REGISTERS as usize],
-        code,
-        pc: 0,
-    }
+struct StepResult {
+    continue_running: bool,
+    output: Option<String>,
 }
 
 impl VM {
+    pub fn new(code: Vec<asm::Code>) -> Self {
+        Self {
+            regs: [0; NUM_REGISTERS as usize],
+            code,
+            pc: 0,
+            capture_output: false,
+        }
+    }
+
+    pub fn capture_output(mut self) -> Self {
+        self.capture_output = true;
+        self
+    }
+
     fn consume_op(&mut self) -> Result<asm::OpCode, String> {
         match self.code[self.pc] {
             asm::Code::Op(op) => {
                 self.pc += 1;
                 Ok(op)
             }
-            _ => Err(err!("Expected an opcode, but got {:?}", self.code[self.pc])),
+            _ => Err(err!("Expected an opcode, but got {}", self.code[self.pc])),
         }
     }
 
@@ -41,7 +49,7 @@ impl VM {
                 self.pc += 1;
                 Ok(reg)
             }
-            _ => Err(err!("Expected a register, but got {:?}", self.code[self.pc])),
+            _ => Err(err!("Expected a register, but got {}", self.code[self.pc])),
         }
     }
 
@@ -51,15 +59,23 @@ impl VM {
                 self.pc += 1;
                 Ok(val)
             }
-            _ => Err(err!("Expected an integer, but got {:?}", self.code[self.pc])),
+            _ => Err(err!("Expected an integer, but got {}", self.code[self.pc])),
         }
     }
 
-    fn step(&mut self) -> Result<bool, String> {
+    fn step(&mut self) -> Result<StepResult, String> {
+        let mut res = StepResult {
+            continue_running: true,
+            output: None,
+        };
+
         // Returns true if the VM should continue running, false if it should
         // halt.
         match self.consume_op() {
-            Ok(asm::OpCode::HALT) => Ok(false),
+            Ok(asm::OpCode::HALT) => {
+                res.continue_running = false;
+                Ok(res)
+            }
             Ok(asm::OpCode::SET) => {
                 let val = {
                     let val = self.consume_int();
@@ -76,7 +92,7 @@ impl VM {
                     reg.unwrap()
                 };
                 self.regs[reg as usize] = val;
-                Ok(true)
+                Ok(res)
             }
             Ok(asm::OpCode::ADD) => {
                 let reg0 = {
@@ -94,7 +110,7 @@ impl VM {
                     reg.unwrap()
                 };
                 self.regs[reg1 as usize] += self.regs[reg0 as usize];
-                Ok(true)
+                Ok(res)
             }
             Ok(asm::OpCode::DBGREG) => {
                 let reg = {
@@ -104,12 +120,12 @@ impl VM {
                     }
                     reg.unwrap()
                 };
-                dbg!("r{} = {}", reg, self.regs[reg as usize]);
-                Ok(true)
+                res.output = Some(dbg!("r{} = {}", reg, self.regs[reg as usize]));
+                Ok(res)
             }
             Ok(asm::OpCode::DBGREGS) => {
-                dbg!("regs = {:?}", self.regs);
-                Ok(true)
+                res.output = Some(dbg!("regs = {:?}", self.regs));
+                Ok(res)
             }
             Err(msg) => {
                 return Err(msg);
@@ -117,12 +133,22 @@ impl VM {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), String> {
+    pub fn run(&mut self) -> Result<String, String> {
+        let mut captured_output = String::new();
+
         loop {
             match self.step() {
-                Ok(continue_running) => {
-                    if !continue_running {
-                        return Ok(());
+                Ok(res) => {
+                    if let Some(output) = res.output {
+                        if !self.capture_output {
+                            println!("{}", output);
+                        } else {
+                            captured_output.push_str(&output);
+                            captured_output.push('\n');
+                        }
+                    }
+                    if !res.continue_running {
+                        return Ok(captured_output);
                     }
                 }
                 Err(msg) => {
@@ -130,5 +156,149 @@ impl VM {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use asm::{Code, OpCode};
+
+    #[test]
+    fn test_halt() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_ok());
+        assert_eq!(vm.pc, 1);
+    }
+
+    #[test]
+    fn test_set() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Int(42), Code::Reg(0),
+            Code::Op(OpCode::SET), Code::Int(-42), Code::Reg(1),
+            Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_ok());
+        assert_eq!(vm.regs[0], 42);
+        assert_eq!(vm.regs[1], -42);
+    }
+
+    #[test]
+    fn test_add() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Int(2), Code::Reg(0),
+            Code::Op(OpCode::SET), Code::Int(40), Code::Reg(1),
+            Code::Op(OpCode::ADD), Code::Reg(0), Code::Reg(1),
+            Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_ok());
+        assert_eq!(vm.regs[0], 2);
+        assert_eq!(vm.regs[1], 42);
+    }
+
+    #[test]
+    fn test_dbgreg() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Int(42), Code::Reg(0),
+            Code::Op(OpCode::DBGREG), Code::Reg(0),
+            Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code).capture_output();
+        let res = vm.run();
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap(), dbg!("r0 = 42\n"));
+    }
+
+    #[test]
+    fn test_dbgregs() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Int(42), Code::Reg(0),
+            Code::Op(OpCode::SET), Code::Int(-42), Code::Reg(1),
+            Code::Op(OpCode::DBGREGS),
+            Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code).capture_output();
+        let res = vm.run();
+        assert!(res.is_ok());
+
+        // Build the expected result string. The first two registers will have the
+        // values of 42 and -42, respectively. The rest (up to NUM_REGISTERS) will be 0.
+        let mut expected_result = dbg!("regs = [42, -42").to_string();
+        for _ in 0..(NUM_REGISTERS - 2) {
+            expected_result.push_str(", 0");
+        }
+        expected_result.push_str("]\n");
+
+        assert_eq!(res.unwrap(), expected_result);
+    }
+
+    #[test]
+    fn test_fails_on_int_as_opcode() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Int(42)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
+    }
+
+    #[test]
+    fn test_fails_on_int_as_reg() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Int(42), Code::Int(0)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
+    }
+
+    #[test]
+    fn test_fails_on_reg_as_opcode() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Reg(0)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
+    }
+
+    #[test]
+    fn test_fails_on_reg_as_int() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Reg(0), Code::Reg(0)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
+    }
+
+    #[test]
+    fn test_fails_on_op_as_int() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Op(OpCode::HALT), Code::Reg(0)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
+    }
+
+    #[test]
+    fn test_fails_on_op_as_reg() {
+        #[rustfmt::skip]
+        let code = vec![
+            Code::Op(OpCode::SET), Code::Reg(0), Code::Op(OpCode::HALT)
+        ];
+        let mut vm = VM::new(code);
+        assert!(vm.run().is_err());
     }
 }

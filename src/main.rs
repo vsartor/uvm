@@ -1,23 +1,40 @@
 #[macro_use]
 mod log_macros;
 mod asm;
+mod parser;
 mod vm;
 
 fn main() {
-    #[rustfmt::skip]
-    let program: Vec<asm::Code> = vec![
-        asm::Code::Op(asm::OpCode::SET), asm::Code::Int(15), asm::Code::Reg(0),
-        asm::Code::Op(asm::OpCode::SET), asm::Code::Int(-4), asm::Code::Reg(1),
-        asm::Code::Op(asm::OpCode::ADD), asm::Code::Reg(0), asm::Code::Reg(1),
-        asm::Code::Op(asm::OpCode::DBGREG), asm::Code::Reg(1),
-        asm::Code::Op(asm::OpCode::DBGREGS),
-        asm::Code::Op(asm::OpCode::HALT),
-    ];
+    // get command line arguments, but skip the first one (the program name)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.len() != 1 {
+        println!("Usage: ./uvm <program> [flags]");
+        std::process::exit(1);
+    }
 
-    let mut vm = vm::new(program);
+    let program = std::fs::read_to_string(&args[0]);
+    if program.is_err() {
+        println!("Failed to read file: {}", program.unwrap_err());
+        // exit with a non-zero exit code
+        std::process::exit(1);
+    }
+    let program = program.unwrap();
+
+    let code = parser::parse_asm(program.to_string());
+    if code.is_err() {
+        let err = code.unwrap_err();
+        println!("{}", err);
+        std::process::exit(1);
+    }
+    let code = code.unwrap();
+
+    asm::display_code(&code);
+
+    let mut vm = vm::VM::new(code);
 
     let result = vm.run();
     if result.is_err() {
         println!("{}", result.unwrap_err());
+        std::process::exit(1);
     }
 }

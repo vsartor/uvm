@@ -8,6 +8,6 @@ macro_rules! err {
 #[macro_export]
 macro_rules! dbg {
     ($($arg:tt)*) => ({
-        println!("\x1b[1;32m[DEBUG]\x1b[0m {}", format_args!($($arg)*));
+        format!("\x1b[1;32m[DEBUG]\x1b[0m {}", format_args!($($arg)*))
     })
 }
