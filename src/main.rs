@@ -1,5 +1,6 @@
 #[macro_use]
 mod log_macros;
+
 mod asm;
 mod parser;
 mod vm;
@@ -29,19 +30,11 @@ fn main() {
     let program_path = matches.get_one::<String>("program_path").unwrap();
     let batched_output = matches.get_flag("batched_output");
 
-    run(program_path, batched_output);
+    run(program_path.clone(), batched_output);
 }
 
-fn run(input_path: &String, batched_output: bool) {
-    let program = std::fs::read_to_string(input_path);
-    if program.is_err() {
-        println!("Failed to read file: {}", program.unwrap_err());
-        // exit with a non-zero exit code
-        std::process::exit(1);
-    }
-    let program = program.unwrap();
-
-    let code = parser::parse_asm(program.to_string());
+fn run(input_path: String, batched_output: bool) {
+    let code = parser::parse_file(input_path);
     if code.is_err() {
         let err = code.unwrap_err();
         println!("{}", err);
