@@ -16,6 +16,30 @@ DIV	r3	r4	// r4 = 5
 SET	8	r5
 MOD	r4	r5	// r5 = 3
 
+SET	10	r6
+INC	r6		// r6 = 11
+
+SET	10	r7
+DEC	r7		// r7 = 9
+
+SET	11	r8
+ADDL	-22	r8	// r8 = -11
+
+SET	15	r9
+MULL	-2	r9	// r9 = -30
+
+SET	10	r10
+SUBLA	2	r10	// r10 = 8
+
+SET	10	r11
+SUBLB	2	r11	// r11 = -8
+
+SET	128	r12
+DIVLA	32	r12	// r12 = 4
+
+SET	48	r13
+DIVLB	432	r13	// r13 = 9
+
 DBGREGS
 
 HALT

@@ -1,0 +1,4 @@
+SET	10	r0
+SET	20	r1
+CMP	r0	r1
+HALT

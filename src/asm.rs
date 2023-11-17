@@ -3,13 +3,27 @@ pub enum OpCode {
     HALT,
     SET,
     ADD,
+    ADDL,
     SUB,
+    SUBLA,
+    SUBLB,
     MUL,
+    MULL,
     DIV,
+    DIVLA,
+    DIVLB,
     MOD,
+    INC,
+    DEC,
+    CMP,
     CMPL,
     JMP,
     JEQ,
+    JLT,
+    JLE,
+    JGT,
+    JGE,
+    JNE,
     DBGREG,
     DBGREGS,
 }
@@ -21,13 +35,27 @@ impl std::fmt::Display for OpCode {
                 OpCode::HALT => write!(f, "HALT"),
                 OpCode::SET => write!(f, "SET"),
                 OpCode::ADD => write!(f, "ADD"),
+                OpCode::ADDL => write!(f, "ADDL"),
                 OpCode::SUB => write!(f, "SUB"),
+                OpCode::SUBLA => write!(f, "SUBLA"),
+                OpCode::SUBLB => write!(f, "SUBLB"),
                 OpCode::MUL => write!(f, "MUL"),
+                OpCode::MULL => write!(f, "MULL"),
                 OpCode::DIV => write!(f, "DIV"),
+                OpCode::DIVLA => write!(f, "DIVLA"),
+                OpCode::DIVLB => write!(f, "DIVLB"),
                 OpCode::MOD => write!(f, "MOD"),
+                OpCode::INC => write!(f, "INC"),
+                OpCode::DEC => write!(f, "DEC"),
+                OpCode::CMP => write!(f, "CMP"),
                 OpCode::CMPL => write!(f, "CMPL"),
                 OpCode::JMP => write!(f, "JMP"),
                 OpCode::JEQ => write!(f, "JEQ"),
+                OpCode::JLT => write!(f, "JLT"),
+                OpCode::JLE => write!(f, "JLE"),
+                OpCode::JGT => write!(f, "JGT"),
+                OpCode::JGE => write!(f, "JGE"),
+                OpCode::JNE => write!(f, "JNE"),
                 OpCode::DBGREG => write!(f, "DBGREG"),
                 OpCode::DBGREGS => write!(f, "DBGREGS"),
             },
@@ -44,13 +72,27 @@ impl std::str::FromStr for OpCode {
             "HALT" => Ok(OpCode::HALT),
             "SET" => Ok(OpCode::SET),
             "ADD" => Ok(OpCode::ADD),
+            "ADDL" => Ok(OpCode::ADDL),
             "SUB" => Ok(OpCode::SUB),
+            "SUBLA" => Ok(OpCode::SUBLA),
+            "SUBLB" => Ok(OpCode::SUBLB),
             "MUL" => Ok(OpCode::MUL),
+            "MULL" => Ok(OpCode::MULL),
             "DIV" => Ok(OpCode::DIV),
+            "DIVLA" => Ok(OpCode::DIVLA),
+            "DIVLB" => Ok(OpCode::DIVLB),
             "MOD" => Ok(OpCode::MOD),
+            "INC" => Ok(OpCode::INC),
+            "DEC" => Ok(OpCode::DEC),
+            "CMP" => Ok(OpCode::CMP),
             "CMPL" => Ok(OpCode::CMPL),
             "JMP" => Ok(OpCode::JMP),
             "JEQ" => Ok(OpCode::JEQ),
+            "JLT" => Ok(OpCode::JLT),
+            "JLE" => Ok(OpCode::JLE),
+            "JGT" => Ok(OpCode::JGT),
+            "JGE" => Ok(OpCode::JGE),
+            "JNE" => Ok(OpCode::JNE),
             "DBGREG" => Ok(OpCode::DBGREG),
             "DBGREGS" => Ok(OpCode::DBGREGS),
             _ => Err(err!("Failed to parse opcode: {}", s)),
@@ -67,17 +109,31 @@ pub enum OpArgT {
     Addr,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 12] = [
+pub const OP_ARG_TYPES: [OpArgT; 26] = [
     OpArgT::Nil,    // HALT
     OpArgT::IntReg, // SET
     OpArgT::RegReg, // ADD
+    OpArgT::IntReg, // ADDL
     OpArgT::RegReg, // SUB
+    OpArgT::IntReg, // SUBLA
+    OpArgT::IntReg, // SUBLB
     OpArgT::RegReg, // MUL
+    OpArgT::IntReg, // MULL
     OpArgT::RegReg, // DIV
+    OpArgT::IntReg, // DIVLA
+    OpArgT::IntReg, // DIVLB
     OpArgT::RegReg, // MOD
+    OpArgT::Reg,    // INC
+    OpArgT::Reg,    // DEC
+    OpArgT::RegReg, // CMP
     OpArgT::IntReg, // CMPL
     OpArgT::Addr,   // JMP
     OpArgT::Addr,   // JEQ
+    OpArgT::Addr,   // JLT
+    OpArgT::Addr,   // JLE
+    OpArgT::Addr,   // JGT
+    OpArgT::Addr,   // JGE
+    OpArgT::Addr,   // JNE
     OpArgT::Reg,    // DBGREG
     OpArgT::Nil,    // DBGREGS
 ];

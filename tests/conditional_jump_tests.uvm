@@ -1,0 +1,54 @@
+// The idea here is to test all JMP variants
+// We will do it in such a way that r7 will only become 1 if we succeed.
+// We assump JMP works
+
+SET	8	r0
+CMPL	5	r0	// CMP=1
+JGE 	j1
+JMP	error
+
+j1:
+JEQ	error
+JLT	error
+JGT	j2
+JMP	error
+
+j2:
+JNE	j25
+JMP	error
+
+j25:
+JGE	j3
+JMP 	error
+
+j3:
+SET	5	r0
+CMPL	5	r0	// CMP = 0
+JNE	error
+JGT	error
+JLT	error
+JEQ	j4
+JMP	error
+
+j4:
+SET	2	r0
+CMPL	5	r0	// CMP = -1
+JEQ	error
+JGT	error
+JGE	error
+JLE	j5
+JMP	error
+
+j5:
+JLT	j6
+JMP 	error
+
+j6:
+DBGREGS
+SET	1	r7
+HALT
+
+error:
+SET	-1	r7
+DBGREGS
+HALT
