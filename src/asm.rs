@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum OpCode {
     HALT,
     SET,
@@ -53,7 +53,7 @@ pub const OP_ARG_TYPES: [OpArgT; 5] = [
     OpArgT::Nil,    // DBGREGS
 ];
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Code {
     Op(OpCode),
     Reg(u8),

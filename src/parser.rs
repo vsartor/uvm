@@ -42,7 +42,7 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
         let raw_op = parts.next().unwrap();
         let op = OpCode::from_str(raw_op);
         if op.is_err() {
-            return Err(err!("{}.{}: Expected to find OpCode but found {}", ctxt.filename, ctxt.line, raw_op));
+            return Err(err!("{}.{}: Expected to find an OpCode but found {}", ctxt.filename, ctxt.line, raw_op));
         }
         let op = op.unwrap();
 
@@ -125,13 +125,18 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
 fn consume_int(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -> Result<i64, String> {
     let val = parts.next();
     if val.is_none() {
-        return Err(err!("{}.{}: {} expected to find integer but found nothing", ctxt.filename, ctxt.line, op));
+        return Err(err!(
+            "{}.{}: {} expected to find an integer but found nothing",
+            ctxt.filename,
+            ctxt.line,
+            op
+        ));
     }
     let val = val.unwrap();
     let val = i64::from_str(val);
     if val.is_err() {
         return Err(err!(
-            "{}.{}: {} expected to find integer but got {}",
+            "{}.{}: {} expected to find an integer but got {}",
             ctxt.filename,
             ctxt.line,
             op,
@@ -145,7 +150,7 @@ fn consume_reg(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -
     let reg = parts.next();
     if reg.is_none() {
         return Err(err!(
-            "{}.{}: {} expected to find register but found nothing",
+            "{}.{}: {} expected to find a register but found nothing",
             ctxt.filename,
             ctxt.line,
             op,
@@ -155,14 +160,20 @@ fn consume_reg(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -
 
     // make sure it has the r prefix
     if !reg.starts_with('r') {
-        return Err(err!("{}.{}: {} expected to find register but got {}", ctxt.filename, ctxt.line, op, reg));
+        return Err(err!(
+            "{}.{}: {} expected to find a register but got {}",
+            ctxt.filename,
+            ctxt.line,
+            op,
+            reg
+        ));
     }
     let reg = &reg[1..];
 
     let reg = u8::from_str(reg);
     if reg.is_err() {
         return Err(err!(
-            "{}.{}: {} expected to find register but got {}",
+            "{}.{}: {} expected to find a register but got {}",
             ctxt.filename,
             ctxt.line,
             op,
@@ -184,4 +195,123 @@ fn validate_line_is_over(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dummy_ctxt() -> Ctxt {
+        Ctxt::new("test".to_string())
+    }
+
+    #[test]
+    fn test_parsing_halt_program() {
+        let raw_code = "HALT".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_ok());
+        assert_eq!(code.unwrap(), vec![Code::Op(OpCode::HALT)]);
+    }
+
+    #[test]
+    fn test_parsing_halt_set_add_program() {
+        #[rustfmt::skip]
+        let raw_code = "
+            SET 2 r0
+            SET 40 r1
+            ADD r0 r1
+            HALT".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+
+        #[rustfmt::skip]
+        let expected_code = vec![
+            Code::Op(OpCode::SET), Code::Int(2), Code::Reg(0),
+            Code::Op(OpCode::SET), Code::Int(40), Code::Reg(1),
+            Code::Op(OpCode::ADD), Code::Reg(0), Code::Reg(1),
+            Code::Op(OpCode::HALT),
+        ];
+
+        assert!(code.is_ok());
+        assert_eq!(code.unwrap(), expected_code);
+    }
+
+    #[test]
+    fn shows_filename_and_lineno_of_error() {
+        let raw_code = "HALT\nHALT\nSET 2 r-2".to_string();
+        let code = parse_string(&raw_code, Ctxt::new("fff".to_string()));
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("fff.2"));
+    }
+
+    #[test]
+    fn shows_opcode_on_reg_error() {
+        let raw_code = "SET 0 0";
+        let code = parse_string(&raw_code.to_string(), dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("SET"));
+    }
+
+    #[test]
+    fn fails_on_register_as_integer() {
+        let raw_code = "SET r2 r0".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find an integer but"));
+    }
+
+    #[test]
+    fn fails_on_double_as_integer() {
+        let raw_code = "SET 2.0 r0".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find an integer but"));
+    }
+
+    #[test]
+    fn fails_on_register_without_r() {
+        let raw_code = "SET 2 0".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find a register but"));
+    }
+
+    #[test]
+    fn fails_on_register_with_only_an_r() {
+        let raw_code = "SET 2 r".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find a register but got"));
+    }
+
+    #[test]
+    fn fails_on_register_without_valid_integer() {
+        let raw_code = "SET 2 r2.0".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find a register but got"));
+    }
+
+    #[test]
+    fn fails_on_register_with_negative_integer() {
+        let raw_code = "SET 2 r-2".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find a register but got"));
+    }
+
+    #[test]
+    fn fails_on_unexpected_opcode() {
+        let raw_code = "crymeariver";
+        let code = parse_string(&raw_code.to_string(), dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("Expected to find an OpCode but"));
+    }
+
+    #[test]
+    fn fails_on_too_many_args() {
+        let raw_code = "HALT 2".to_string();
+        let code = parse_string(&raw_code, dummy_ctxt());
+        assert!(code.is_err());
+        assert!(code.unwrap_err().contains("expected to find end of line but"));
+    }
 }
