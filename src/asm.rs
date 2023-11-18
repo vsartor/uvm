@@ -1,38 +1,38 @@
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum OpCode {
-    HALT,
-    SET,
-    PUSH,
-    PUSHL,
-    POP,
-    PUSHRF,
-    POPRF,
-    ADD,
-    ADDL,
-    SUB,
-    SUBLA,
-    SUBLB,
-    MUL,
-    MULL,
-    DIV,
-    DIVLA,
-    DIVLB,
-    MOD,
-    INC,
-    DEC,
-    CMP,
-    CMPL,
-    JMP,
-    JEQ,
-    JLT,
-    JLE,
-    JGT,
-    JGE,
-    JNE,
-    CALL,
-    RET,
-    DBGREG,
-    DBGREGS,
+    HALT,    // Stops execution
+    SET,     // x rb: Sets `rb` to `x`
+    PUSH,    // rb: Pushes the value of `rb` to the stack
+    PUSHL,   // x: Pushes `x` to the stack
+    POP,     // rb: Pops the top of the stack to `rb`
+    PUSHRF,  // x: Saves the value of the first `n` registers to the stack
+    POPRF,   // x: Loads the value of the first `n` registers from the stack
+    ADD,     // ra rb: Adds `ra` and `rb` and stores the result in `rb`
+    ADDL,    // x rb: Adds `x` and `rb` and stores the result in `rb`
+    SUB,     // ra rb: Subtracts `ra` from `rb` and stores the result in `rb`
+    SUBLA,   // x rb: Subtracts `x` from `rb` and stores the result in `rb`
+    SUBLB,   // x rb: Subtracts `rb` from `x` and stores the result in `rb`
+    MUL,     // ra rb: Multiplies `ra` and `rb` and stores the result in `rb`
+    MULL,    // x rb: Multiplies `x` and `rb` and stores the result in `rb`
+    DIV,     // ra rb: Divides `rb` by `ra` and stores the result in `rb`
+    DIVLA,   // x rb: Divides `rb` by `x` and stores the result in `rb`
+    DIVLB,   // x rb: Divides `x` by `rb` and stores the result in `rb`
+    MOD,     // ra rb: Stores the remainder of `rb` divided by `ra` in `rb`
+    INC,     // rb: Increments `rb` by 1
+    DEC,     // rb: Decrements `rb` by 1
+    CMP,     // ra rb: Compares `rb` and `ra` and stores the result in `cmp` (e.g. GT if `rb` > `ra`)
+    CMPL,    // x rb: Compares `rb` and `x` and stores the result in `cmp` (e.g. GT if `rb` > `x`)
+    JMP,     // addr: Jumps to `addr`
+    JEQ,     // addr: Jumps to `addr` if `cmp` has EQ
+    JLT,     // addr: Jumps to `addr` if `cmp` has LT
+    JLE,     // addr: Jumps to `addr` if `cmp` has LE
+    JGT,     // addr: Jumps to `addr` if `cmp` has GT
+    JGE,     // addr: Jumps to `addr` if `cmp` has GE
+    JNE,     // addr: Jumps to `addr` if `cmp` has NE
+    CALL,    // addr: Calls the function at `addr` saving the current address in the call stack
+    RET,     // Returns from a function (pops the call stack and jumps to the saved address)
+    DBGREG,  // rb: Prints the value of `rb` to stdout for debugging
+    DBGREGS, // Prints the values of all registers to stdout for debugging
 }
 
 impl std::fmt::Display for OpCode {
