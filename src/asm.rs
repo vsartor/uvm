@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use num_enum::TryFromPrimitive;
 
 #[derive(Copy, Clone, Debug, PartialEq, TryFromPrimitive)]
@@ -252,4 +254,70 @@ pub fn display_code(code: &Vec<Code>) {
     }
 
     println!("└ END\n"); // note the trailing newline
+}
+
+pub fn displayable_code(code: &Vec<Code>) -> (Vec<String>, HashMap<usize, usize>, HashMap<usize, usize>) {
+    // We return:
+    // - A vector of strings representing each instruction.
+    // - A hashmap mapping the address of each instruction to its index in the vector.
+    // - A hashmap mapping the index of each instruction to its address (the inverse hashmap).
+
+    // So for example if code is:
+    // code = [SET, 0, r1, ADD, 1, 2]
+    // We will return a vector of
+    // ["SET 0 r1", "ADD 1 2"]
+    // a hashmap of
+    // {0: 0, 3: 1}
+    // and a hashmap of
+    // {0: 0, 1: 3}
+
+    let mut addr2idx = HashMap::new();
+    let mut displayable_code = Vec::new();
+
+    let mut idx = 0;
+    while idx < code.len() {
+        let op = match code[idx] {
+            Code::Op(op) => op,
+            _ => {
+                panic!("Expected an opcode, but got {}", code[idx])
+            }
+        };
+        let arg_t = OP_ARG_TYPES[op as usize];
+        match arg_t {
+            OpArgT::Nil => {
+                displayable_code.push(format!("{}", code[idx]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 1;
+            }
+            OpArgT::Reg => {
+                displayable_code.push(format!("{} {}", code[idx], code[idx + 1]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 2;
+            }
+            OpArgT::IntReg => {
+                displayable_code.push(format!("{} {} {}", code[idx], code[idx + 1], code[idx + 2]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 3;
+            }
+            OpArgT::RegReg => {
+                displayable_code.push(format!("{} {} {}", code[idx], code[idx + 1], code[idx + 2]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 3;
+            }
+            OpArgT::Addr => {
+                displayable_code.push(format!("{} {}", code[idx], code[idx + 1]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 2;
+            }
+            OpArgT::Int => {
+                displayable_code.push(format!("{} {}", code[idx], code[idx + 1]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 2;
+            }
+        }
+    }
+
+    let idx2addr = addr2idx.iter().map(|(k, v)| (*v, *k)).collect();
+
+    (displayable_code, addr2idx, idx2addr)
 }

@@ -29,9 +29,15 @@ fn main() {
                     Arg::new("batched_output")
                         .short('o')
                         .long("batched-output")
+                        .action(ArgAction::SetTrue)
+                        .help("Capture the output of the program and print it all at once"),
+                )
+                .arg(
+                    Arg::new("verbose")
+                        .short('v')
+                        .long("verbose")
                         .action(ArgAction::SetTrue),
                 )
-                .arg(Arg::new("step").short('s').long("step").action(ArgAction::SetTrue))
                 .arg(Arg::new("debug").short('d').long("debug").action(ArgAction::SetTrue)),
         )
         .subcommand(
@@ -52,8 +58,8 @@ fn main() {
             let input_path = run_matches.get_one::<String>("program_path").unwrap().clone();
             let is_binary = run_matches.get_flag("binary");
             let is_batched_output = run_matches.get_flag("batched_output");
-            let is_step = run_matches.get_flag("step");
             let is_debug = run_matches.get_flag("debug");
+            let is_verbose = run_matches.get_flag("verbose");
 
             if is_binary {
                 let code = serializer::disassemble(input_path);
@@ -63,7 +69,7 @@ fn main() {
                     std::process::exit(1);
                 }
                 let code = code.unwrap();
-                run(code, is_batched_output, is_step, is_debug);
+                run(code, is_batched_output, is_debug, is_verbose);
             } else {
                 let code = parser::parse_file(input_path);
                 if code.is_err() {
@@ -72,7 +78,7 @@ fn main() {
                     std::process::exit(1);
                 }
                 let code = code.unwrap();
-                run(code, is_batched_output, is_step, is_debug);
+                run(code, is_batched_output, is_debug, is_verbose);
             }
         }
         Some(("asm", asm_matches)) => {
@@ -90,20 +96,17 @@ fn main() {
     }
 }
 
-fn run(code: Vec<asm::Code>, is_batched_output: bool, is_step: bool, is_debug: bool) {
-    if is_debug {
+fn run(code: Vec<asm::Code>, is_batched_output: bool, is_debug: bool, is_verbose: bool) {
+    if is_verbose {
         asm::display_code(&code);
     }
 
     let mut vm = vm::VM::new(code);
-    if is_step {
-        vm = vm.step_by_step();
-    }
     if is_batched_output {
         vm = vm.capture_output();
     }
 
-    let result = vm.run();
+    let result = if !is_debug { vm.run() } else { vm.debugger() };
     if result.is_err() {
         println!("{}", result.unwrap_err());
         std::process::exit(1);

@@ -1,4 +1,6 @@
-use crate::asm::{Code, OpCode};
+use std::io::Write;
+
+use crate::asm::{displayable_code, Code, OpCode};
 
 const NUM_REGISTERS: usize = 16;
 const STACK_SIZE: usize = 8 * 1024;
@@ -13,7 +15,6 @@ pub struct VM {
     sp: usize,
     csp: usize,
     cmp: i8,
-    step_by_step: bool,
     capture_output: bool,
 }
 
@@ -33,18 +34,12 @@ impl VM {
             sp: 0,
             csp: 0,
             cmp: 0,
-            step_by_step: false,
             capture_output: false,
         }
     }
 
     pub fn capture_output(mut self) -> Self {
         self.capture_output = true;
-        self
-    }
-
-    pub fn step_by_step(mut self) -> Self {
-        self.step_by_step = true;
         self
     }
 
@@ -630,14 +625,6 @@ impl VM {
         let mut captured_output = String::new();
 
         loop {
-            if self.step_by_step {
-                // TODO: do a decent debugger here jfc
-                println!("{}", dbg!("pc={} | cmp={} | regs={:?}", self.pc, self.cmp, self.regs));
-                println!("Press ENTER to continue...");
-                let mut input = String::new();
-                let _ = std::io::stdin().read_line(&mut input);
-            }
-
             match self.step() {
                 Ok(res) => {
                     if let Some(output) = res.output {
@@ -654,6 +641,191 @@ impl VM {
                 }
                 Err(msg) => {
                     return Err(msg);
+                }
+            }
+        }
+    }
+
+    pub fn debugger(&mut self) -> Result<String, String> {
+        let mut wait_for_input = true;
+        let mut allowed_to_run = false;
+        let mut breakpoints: Vec<usize> = Vec::new();
+
+        let (displayable_code, addr2idx, idx2addr) = displayable_code(&self.code);
+
+        loop {
+            // check if current PC is a breakpoint
+            if breakpoints.contains(&self.pc) {
+                if allowed_to_run {
+                    // we just hit a breakpoint, so we need to stop
+                    // if allowed_to_run was false, it means we already had hit this breakpoint
+                    // and the user is just running inspectioning commands
+                    println!("Breakpoint hit at address {}", self.pc);
+                }
+                wait_for_input = true;
+            }
+
+            if wait_for_input {
+                print!("> ");
+                std::io::stdout().flush().unwrap();
+                let input = {
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input).unwrap();
+                    input
+                };
+
+                let mut tokens = input.split_whitespace();
+                let cmd = {
+                    let cmd = tokens.next();
+                    if cmd.is_none() {
+                        continue;
+                    }
+                    cmd.unwrap()
+                };
+
+                match cmd {
+                    "r" | "regs" => {
+                        allowed_to_run = false;
+
+                        println!("regs = {:?}", self.regs);
+                    }
+                    "st" | "stack" => {
+                        allowed_to_run = false;
+
+                        // get how many entries from the top of stack to print
+                        let num_entries = {
+                            let num_entries = tokens.next();
+                            if num_entries.is_none() {
+                                println!("Expected a number of entries to print");
+                                continue;
+                            }
+                            let num_entries = num_entries.unwrap();
+                            let num_entries = num_entries.parse::<usize>();
+                            if num_entries.is_err() {
+                                println!("Expected a valid number of entries to print");
+                                continue;
+                            }
+                            num_entries.unwrap()
+                        };
+
+                        // print the stack with the top of stack first (i.e. in reverse order)
+                        print!("SP = {}, Stack = [", self.sp);
+                        let num_entries = std::cmp::min(num_entries, self.sp);
+
+                        if num_entries == 0 {
+                            println!("]");
+                            continue;
+                        }
+
+                        for i in 0..num_entries {
+                            let idx = self.sp - i - 1;
+                            if i == num_entries - 1 {
+                                if num_entries == self.sp {
+                                    // showing all of stack, so represent this by a closed bracked
+                                    println!("{}]", self.stack[idx]);
+                                } else {
+                                    // there is stack remaining, so represent this directly
+                                    println!("{}, ...<{} hidden>]", self.stack[idx], self.sp - num_entries);
+                                }
+                            } else {
+                                print!("{}, ", self.stack[idx]);
+                            }
+                        }
+                    }
+                    "s" | "step" => {
+                        allowed_to_run = true;
+                    }
+                    "p" | "play" => {
+                        allowed_to_run = true;
+                        wait_for_input = false;
+                    }
+                    "x" | "exit" => {
+                        return Ok("".to_string());
+                    }
+                    "bp" | "breakpoint" => {
+                        allowed_to_run = false;
+
+                        let addr = {
+                            let addr = tokens.next();
+                            if addr.is_none() {
+                                println!("Expected an address");
+                                continue;
+                            }
+                            let addr = addr.unwrap();
+                            let addr = addr.parse::<usize>();
+                            if addr.is_err() {
+                                println!("Expected a valid address");
+                                continue;
+                            }
+                            addr.unwrap()
+                        };
+                        println!("Breakpoint set at address {}", addr);
+                        breakpoints.push(addr);
+                    }
+                    "c" | "code" => {
+                        allowed_to_run = false;
+
+                        let window_size = {
+                            let window_size = tokens.next();
+                            if window_size.is_none() {
+                                println!("Expected a window size");
+                                continue;
+                            }
+                            let window_size = window_size.unwrap();
+                            let window_size = window_size.parse::<usize>();
+                            if window_size.is_err() {
+                                println!("Expected a valid window size");
+                                continue;
+                            }
+                            window_size.unwrap()
+                        };
+
+                        let current_idx = addr2idx[&self.pc];
+                        let start_idx = if current_idx >= window_size {
+                            current_idx - window_size
+                        } else {
+                            0
+                        };
+                        let end_idx = if current_idx + window_size >= displayable_code.len() {
+                            displayable_code.len()
+                        } else {
+                            current_idx + window_size
+                        };
+
+                        for (idx, line) in displayable_code[start_idx..end_idx].iter().enumerate() {
+                            if current_idx == start_idx + idx {
+                                print!("⇨ ");
+                            } else {
+                                print!("  ");
+                            }
+                            println!("{:04} {}", idx2addr[&(start_idx + idx)], line);
+                        }
+                    }
+                    _ => {
+                        allowed_to_run = false;
+
+                        println!("Unknown command: {}", cmd);
+                        continue;
+                    }
+                }
+            }
+
+            if allowed_to_run {
+                match self.step() {
+                    Ok(res) => {
+                        if let Some(output) = res.output {
+                            println!("PROGRAM OUTPUT> {}", output);
+                        }
+                        if !res.continue_running {
+                            println!("<PROGRAM HALTED>");
+                            return Ok("".to_string());
+                        }
+                    }
+                    Err(msg) => {
+                        // TODO: Maybe try something smart here for debugging purposes?
+                        println!("PROGRAM ERROR> {}", msg);
+                        return Err(msg);
+                    }
                 }
             }
         }
