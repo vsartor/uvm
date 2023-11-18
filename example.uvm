@@ -1,5 +1,0 @@
-SET	15	r0
-SET	20	r1
-ADD	r0	r1
-DBGREGS
-HALT
