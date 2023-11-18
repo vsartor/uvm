@@ -148,6 +148,21 @@ impl VM {
                 self.sp += 1;
                 Ok(res)
             }
+            OpCode::PUSHL => {
+                let val = {
+                    let val = self.consume_int();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                if self.sp >= STACK_SIZE {
+                    return Err(err!("Stack overflow"));
+                }
+                self.stack[self.sp] = val;
+                self.sp += 1;
+                Ok(res)
+            }
             OpCode::POP => {
                 let reg = {
                     let reg = self.consume_reg();

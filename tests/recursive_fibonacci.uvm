@@ -2,8 +2,7 @@
 // meant to test CALL/RET instructions and the callstack functioning
 
 
-SET	20	r0
-PUSH	r0
+PUSHL	20
 CALL	fibonacci
 POP	r0
 DBGREG	r0

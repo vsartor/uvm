@@ -3,6 +3,7 @@ pub enum OpCode {
     HALT,
     SET,
     PUSH,
+    PUSHL,
     POP,
     PUSHRF,
     POPRF,
@@ -41,6 +42,7 @@ impl std::fmt::Display for OpCode {
                 OpCode::HALT => write!(f, "HALT"),
                 OpCode::SET => write!(f, "SET"),
                 OpCode::PUSH => write!(f, "PUSH"),
+                OpCode::PUSHL => write!(f, "PUSHL"),
                 OpCode::POP => write!(f, "POP"),
                 OpCode::PUSHRF => write!(f, "PUSHRF"),
                 OpCode::POPRF => write!(f, "POPRF"),
@@ -84,6 +86,7 @@ impl std::str::FromStr for OpCode {
             "HALT" => Ok(OpCode::HALT),
             "SET" => Ok(OpCode::SET),
             "PUSH" => Ok(OpCode::PUSH),
+            "PUSHL" => Ok(OpCode::PUSHL),
             "POP" => Ok(OpCode::POP),
             "PUSHRF" => Ok(OpCode::PUSHRF),
             "POPRF" => Ok(OpCode::POPRF),
@@ -128,10 +131,11 @@ pub enum OpArgT {
     Int,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 32] = [
+pub const OP_ARG_TYPES: [OpArgT; 33] = [
     OpArgT::Nil,    // HALT
     OpArgT::IntReg, // SET
     OpArgT::Reg,    // PUSH
+    OpArgT::Int,    // PUSHL
     OpArgT::Reg,    // POP
     OpArgT::Int,    // PUSHRF
     OpArgT::Int,    // POPRF
