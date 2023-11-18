@@ -142,5 +142,6 @@ fn test_basic_float_arithmetic() {
         return;
     }
     assert_eq!(vm.get_registers_as_floats()[..5], [3.14, 10.99, 4.396, -87.92, 88.02]);
-    assert_eq!(vm.get_registers()[5..7], [89, 88]);
+    assert_eq!(vm.get_registers()[5..9], [89, 88, 1405, 25796]);
+    assert_eq!(vm.get_registers_as_floats()[9..13], [11.2, -11.2, 7.0, 0.5]);
 }

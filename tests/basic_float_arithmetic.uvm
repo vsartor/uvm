@@ -25,6 +25,30 @@ CEIL	r5		// r5 = 89i
 MOV	r4	r6
 FLOR	r6		// r6 = 88i
 
+// Power
+SETF	0.64	r7
+POW	r2	r7
+MULFL	10000	r7
+FLOR	r7		// r7 = 1405
+
+// Power (alt)
+SETF	0.64	r8
+POW2	r2	r8
+MULFL	10000	r8
+FLOR	r8		// r8 = 25796
+
+// subfla/subflb
+SETF	14.4	r9
+SETF	14.4	r10
+SUBFLA	3.2	r9	// r9 = 14.4 - 3.3 = 11.2
+SUBFLB	3.2	r10	// r10 = 3.3 - 14.4 = -11.2
+
+// divfla/divflb
+SETF	24.5	r11
+SETF	24.5	r12
+DIVFLA	3.5	r11	// r11 = 24.5 / 3.5 = 7.0
+DIVFLB	12.25	r12	// r10 = 12.25 / 24.5 = 0.5
+
 DBGREGF	r0
 DBGREGF	r1
 DBGREGF	r2
@@ -32,5 +56,11 @@ DBGREGF	r3
 DBGREGF	r4
 DBGREG	r5
 DBGREG	r6
+DBGREG	r7
+DBGREG	r8
+DBGREGF r9
+DBGREGF r10
+DBGREGF r11
+DBGREGF r12
 
 HALT

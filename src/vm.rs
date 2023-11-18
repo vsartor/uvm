@@ -529,6 +529,30 @@ impl VM {
                 self.regs[reg1] = f2i(val);
                 Ok(res)
             }
+            OpCode::ADDFL => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val1 + val2;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
+                Ok(res)
+            }
             OpCode::SUBF => {
                 let reg0 = {
                     let reg = self.consume_reg();
@@ -551,6 +575,54 @@ impl VM {
 
                 // store in the register as an integer
                 self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::SUBFLA => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val2 - val1;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
+                Ok(res)
+            }
+            OpCode::SUBFLB => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val1 - val2;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
                 Ok(res)
             }
             OpCode::MULF => {
@@ -577,6 +649,30 @@ impl VM {
                 self.regs[reg1] = f2i(val);
                 Ok(res)
             }
+            OpCode::MULFL => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val1 * val2;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
+                Ok(res)
+            }
             OpCode::DIVF => {
                 let reg0 = {
                     let reg = self.consume_reg();
@@ -599,6 +695,150 @@ impl VM {
 
                 // store in the register as an integer
                 self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::DIVFLA => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val2 / val1;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
+                Ok(res)
+            }
+            OpCode::DIVFLB => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg]);
+                let val = val1 / val2;
+
+                // store in the register as an integer
+                self.regs[reg] = f2i(val);
+                Ok(res)
+            }
+            OpCode::POW => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val2.powf(val1);
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::POW2 => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val1.powf(val2);
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::POWL => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg0]);
+                let val = val2.powf(val1);
+
+                // store in the register as an integer
+                self.regs[reg0] = f2i(val);
+                Ok(res)
+            }
+            OpCode::POW2L => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = val;
+                let val2 = i2f(self.regs[reg0]);
+                let val = val1.powf(val2);
+
+                // store in the register as an integer
+                self.regs[reg0] = f2i(val);
                 Ok(res)
             }
             OpCode::CEIL => {

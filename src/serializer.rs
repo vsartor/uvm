@@ -5,7 +5,10 @@ use crate::{
     parser::parse_file,
 };
 
-const UVM_BINARY_SIGNATURE: [u8; 8] = [0x2c, 0xdd, 0x59, 0x9b, 0x96, 0xe1, 0xbf, 0x50];
+const UVM_SIGNATURE_LEN: usize = 15;
+const UVM_BINARY_SIGNATURE: [u8; UVM_SIGNATURE_LEN] = [
+    0x56, 0x69, 0x63, 0x74, 0x68, 0x6f, 0x72, 0x20, 0x69, 0x73, 0x20, 0x43, 0x30, 0x30, 0x4c,
+];
 const UVM_BINARY_VERSION: u8 = 0x01;
 
 pub fn serialize(code: &Vec<Code>) -> Result<Vec<u8>, String> {
@@ -124,25 +127,24 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
     let mut code = Vec::new();
     let mut idx = 0;
 
-    // first we need to check signature
-    if binary.len() < 9 {
+    if binary.len() < UVM_SIGNATURE_LEN + 1 {
         return Err(err!("Binary is too short to be a valid uvm binary ({} bytes)", binary.len()));
     }
 
-    if binary[0..8] != UVM_BINARY_SIGNATURE {
+    if binary[..UVM_SIGNATURE_LEN] != UVM_BINARY_SIGNATURE {
         return Err(format!("Binary signature is invalid, this is not a UVM binary"));
     }
 
     // check version
-    if binary[8] != UVM_BINARY_VERSION {
+    if binary[UVM_SIGNATURE_LEN] != UVM_BINARY_VERSION {
         return Err(err!(
             "Binary version is invalid, written with {} but current version is {}",
-            binary[8],
+            binary[UVM_SIGNATURE_LEN],
             UVM_BINARY_VERSION
         ));
     }
 
-    idx += 9;
+    idx += UVM_SIGNATURE_LEN + 1;
 
     while idx < binary.len() {
         // get the opcode

@@ -28,9 +28,19 @@ pub enum OpCode {
     INC,     // rb: Increments `rb` by 1
     DEC,     // rb: Decrements `rb` by 1
     ADDF,    // ra rb: Floating point adds `ra` and `rb` and stores the result in `rb`
+    ADDFL,   // x rb: Floating point adds `x` and `rb` and stores the result in `rb`
     SUBF,    // ra rb: Floating point subtracts `ra` from `rb` and stores the result in `rb`
+    SUBFLA,  // x rb: Floating point subtracts `x` from `rb` and stores the result in `rb`
+    SUBFLB,  // x rb: Floating point subtracts `rb` from `x` and stores the result in `rb`
     MULF,    // ra rb: Floating point multiplies `ra` and `rb` and stores the result in `rb`
+    MULFL,   // x rb: Floating point multiplies `x` and `rb` and stores the result in `rb`
     DIVF,    // ra rb: Floating point divides `rb` by `ra` and stores the result in `rb`
+    DIVFLA,  // x rb: Floating point divides `rb` by `x` and stores the result in `rb`
+    DIVFLB,  // x rb: Floating point divides `x` by `rb` and stores the result in `rb`
+    POW,     // ra rb: Raises `rb` to the power of `ra` and stores the result in `rb`
+    POW2,    // ra rb: Raises `ra` to the power of `rb` and stores the result in `rb`
+    POWL,    // x rb: Raises `rb` to the power of `x` and stores the result in `rb`
+    POW2L,   // x rb: Raises `x` to the power of `rb` and stores the result in `rb`
     CEIL,    // rb: Rounds `rb` up to the nearest integer
     FLOR,    // rb: Rounds `rb` down to the nearest integer
     CMP,     // ra rb: Compares `rb` and `ra` and stores the result in `cmp` (e.g. GT if `rb` > `ra`)
@@ -91,9 +101,19 @@ impl std::fmt::Display for OpCode {
                 OpCode::INC => write!(f, "INC"),
                 OpCode::DEC => write!(f, "DEC"),
                 OpCode::ADDF => write!(f, "ADDF"),
+                OpCode::ADDFL => write!(f, "ADDFL"),
                 OpCode::SUBF => write!(f, "SUBF"),
+                OpCode::SUBFLA => write!(f, "SUBFLA"),
+                OpCode::SUBFLB => write!(f, "SUBFLB"),
                 OpCode::MULF => write!(f, "MULF"),
+                OpCode::MULFL => write!(f, "MULFL"),
                 OpCode::DIVF => write!(f, "DIVF"),
+                OpCode::DIVFLA => write!(f, "DIVFLA"),
+                OpCode::DIVFLB => write!(f, "DIVFLB"),
+                OpCode::POW => write!(f, "POW"),
+                OpCode::POW2 => write!(f, "POW2"),
+                OpCode::POWL => write!(f, "POWL"),
+                OpCode::POW2L => write!(f, "POW2L"),
                 OpCode::CEIL => write!(f, "CEIL"),
                 OpCode::FLOR => write!(f, "FLOR"),
                 OpCode::CMP => write!(f, "CMP"),
@@ -144,9 +164,19 @@ impl std::str::FromStr for OpCode {
             "INC" => Ok(OpCode::INC),
             "DEC" => Ok(OpCode::DEC),
             "ADDF" => Ok(OpCode::ADDF),
+            "ADDFL" => Ok(OpCode::ADDFL),
             "SUBF" => Ok(OpCode::SUBF),
+            "SUBFLA" => Ok(OpCode::SUBFLA),
+            "SUBFLB" => Ok(OpCode::SUBFLB),
             "MULF" => Ok(OpCode::MULF),
+            "MULFL" => Ok(OpCode::MULFL),
             "DIVF" => Ok(OpCode::DIVF),
+            "DIVFLA" => Ok(OpCode::DIVFLA),
+            "DIVFLB" => Ok(OpCode::DIVFLB),
+            "POW" => Ok(OpCode::POW),
+            "POW2" => Ok(OpCode::POW2),
+            "POWL" => Ok(OpCode::POWL),
+            "POW2L" => Ok(OpCode::POW2L),
             "CEIL" => Ok(OpCode::CEIL),
             "FLOR" => Ok(OpCode::FLOR),
             "CMP" => Ok(OpCode::CMP),
@@ -179,7 +209,7 @@ pub enum OpArgT {
     RealReg,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 42] = [
+pub const OP_ARG_TYPES: [OpArgT; 52] = [
     OpArgT::Nil,     // HALT
     OpArgT::IntReg,  // SET
     OpArgT::RealReg, // SETF
@@ -203,9 +233,19 @@ pub const OP_ARG_TYPES: [OpArgT; 42] = [
     OpArgT::Reg,     // INC
     OpArgT::Reg,     // DEC
     OpArgT::RegReg,  // ADDF
+    OpArgT::RealReg, // ADDFL
     OpArgT::RegReg,  // SUBF
+    OpArgT::RealReg, // SUBFLA
+    OpArgT::RealReg, // SUBFLB
     OpArgT::RegReg,  // MULF
+    OpArgT::RealReg, // MULFL
     OpArgT::RegReg,  // DIVF
+    OpArgT::RealReg, // DIVFLA
+    OpArgT::RealReg, // DIVFLB
+    OpArgT::RegReg,  // POW
+    OpArgT::RegReg,  // POW2
+    OpArgT::IntReg,  // POWL
+    OpArgT::IntReg,  // POW2L
     OpArgT::Reg,     // CEIL
     OpArgT::Reg,     // FLOR
     OpArgT::RegReg,  // CMP
