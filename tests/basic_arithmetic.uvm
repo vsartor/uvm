@@ -29,16 +29,16 @@ SET	15	r9
 MULL	-2	r9	// r9 = -30
 
 SET	10	r10
-SUBLA	2	r10	// r10 = 8
+SUBL	2	r10	// r10 = 8
 
 SET	10	r11
-SUBLB	2	r11	// r11 = -8
+SUB2L	2	r11	// r11 = -8
 
 SET	128	r12
-DIVLA	32	r12	// r12 = 4
+DIVL	32	r12	// r12 = 4
 
 SET	48	r13
-DIVLB	432	r13	// r13 = 9
+DIV2L	432	r13	// r13 = 9
 
 DBGREGS
 

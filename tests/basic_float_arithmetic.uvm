@@ -40,14 +40,14 @@ FLOR	r8		// r8 = 25796
 // subfla/subflb
 SETF	14.4	r9
 SETF	14.4	r10
-SUBFLA	3.2	r9	// r9 = 14.4 - 3.3 = 11.2
-SUBFLB	3.2	r10	// r10 = 3.3 - 14.4 = -11.2
+SUBFL	3.2	r9	// r9 = 14.4 - 3.3 = 11.2
+SUBF2L	3.2	r10	// r10 = 3.3 - 14.4 = -11.2
 
 // divfla/divflb
 SETF	24.5	r11
 SETF	24.5	r12
-DIVFLA	3.5	r11	// r11 = 24.5 / 3.5 = 7.0
-DIVFLB	12.25	r12	// r10 = 12.25 / 24.5 = 0.5
+DIVFL	3.5	r11	// r11 = 24.5 / 3.5 = 7.0
+DIVF2L	12.25	r12	// r10 = 12.25 / 24.5 = 0.5
 
 DBGREGF	r0
 DBGREGF	r1

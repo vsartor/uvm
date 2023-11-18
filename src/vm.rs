@@ -339,7 +339,7 @@ impl VM {
                 self.regs[reg1] -= self.regs[reg0];
                 Ok(res)
             }
-            OpCode::SUBLA => {
+            OpCode::SUBL => {
                 let val = {
                     let val = self.consume_int();
                     if val.is_err() {
@@ -357,7 +357,7 @@ impl VM {
                 self.regs[reg] -= val;
                 Ok(res)
             }
-            OpCode::SUBLB => {
+            OpCode::SUB2L => {
                 let val = {
                     let val = self.consume_int();
                     if val.is_err() {
@@ -429,7 +429,7 @@ impl VM {
                 self.regs[reg1] /= self.regs[reg0];
                 Ok(res)
             }
-            OpCode::DIVLA => {
+            OpCode::DIVL => {
                 let val = {
                     let val = self.consume_int();
                     if val.is_err() {
@@ -447,7 +447,7 @@ impl VM {
                 self.regs[reg] /= val;
                 Ok(res)
             }
-            OpCode::DIVLB => {
+            OpCode::DIV2L => {
                 let val = {
                     let val = self.consume_int();
                     if val.is_err() {
@@ -577,7 +577,7 @@ impl VM {
                 self.regs[reg1] = f2i(val);
                 Ok(res)
             }
-            OpCode::SUBFLA => {
+            OpCode::SUBFL => {
                 let val = {
                     let val = self.consume_real();
                     if val.is_err() {
@@ -601,7 +601,7 @@ impl VM {
                 self.regs[reg] = f2i(val);
                 Ok(res)
             }
-            OpCode::SUBFLB => {
+            OpCode::SUBF2L => {
                 let val = {
                     let val = self.consume_real();
                     if val.is_err() {
@@ -697,7 +697,7 @@ impl VM {
                 self.regs[reg1] = f2i(val);
                 Ok(res)
             }
-            OpCode::DIVFLA => {
+            OpCode::DIVFL => {
                 let val = {
                     let val = self.consume_real();
                     if val.is_err() {
@@ -721,7 +721,7 @@ impl VM {
                 self.regs[reg] = f2i(val);
                 Ok(res)
             }
-            OpCode::DIVFLB => {
+            OpCode::DIVF2L => {
                 let val = {
                     let val = self.consume_real();
                     if val.is_err() {
