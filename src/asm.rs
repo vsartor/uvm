@@ -28,6 +28,8 @@ pub enum OpCode {
     JGT,
     JGE,
     JNE,
+    CALL,
+    RET,
     DBGREG,
     DBGREGS,
 }
@@ -64,6 +66,8 @@ impl std::fmt::Display for OpCode {
                 OpCode::JGT => write!(f, "JGT"),
                 OpCode::JGE => write!(f, "JGE"),
                 OpCode::JNE => write!(f, "JNE"),
+                OpCode::CALL => write!(f, "CALL"),
+                OpCode::RET => write!(f, "RET"),
                 OpCode::DBGREG => write!(f, "DBGREG"),
                 OpCode::DBGREGS => write!(f, "DBGREGS"),
             },
@@ -105,6 +109,8 @@ impl std::str::FromStr for OpCode {
             "JGT" => Ok(OpCode::JGT),
             "JGE" => Ok(OpCode::JGE),
             "JNE" => Ok(OpCode::JNE),
+            "CALL" => Ok(OpCode::CALL),
+            "RET" => Ok(OpCode::RET),
             "DBGREG" => Ok(OpCode::DBGREG),
             "DBGREGS" => Ok(OpCode::DBGREGS),
             _ => Err(err!("Failed to parse opcode: {}", s)),
@@ -122,7 +128,7 @@ pub enum OpArgT {
     Int,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 30] = [
+pub const OP_ARG_TYPES: [OpArgT; 32] = [
     OpArgT::Nil,    // HALT
     OpArgT::IntReg, // SET
     OpArgT::Reg,    // PUSH
@@ -151,6 +157,8 @@ pub const OP_ARG_TYPES: [OpArgT; 30] = [
     OpArgT::Addr,   // JGT
     OpArgT::Addr,   // JGE
     OpArgT::Addr,   // JNE
+    OpArgT::Addr,   // CALL
+    OpArgT::Nil,    // RET
     OpArgT::Reg,    // DBGREG
     OpArgT::Nil,    // DBGREGS
 ];

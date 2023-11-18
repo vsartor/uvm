@@ -1,14 +1,17 @@
 use crate::asm::{Code, OpCode};
 
 const NUM_REGISTERS: usize = 16;
-const STACK_SIZE: usize = 256;
+const STACK_SIZE: usize = 8 * 1024;
+const CALL_STACK_SIZE: usize = 1 * 1024;
 
 pub struct VM {
     regs: [i64; NUM_REGISTERS],
     stack: [i64; STACK_SIZE],
+    call_stack: [usize; CALL_STACK_SIZE],
     code: Vec<Code>,
     pc: usize,
     sp: usize,
+    csp: usize,
     cmp: i8,
     step_by_step: bool,
     capture_output: bool,
@@ -24,9 +27,11 @@ impl VM {
         Self {
             regs: [0; NUM_REGISTERS],
             stack: [0; STACK_SIZE],
+            call_stack: [0; CALL_STACK_SIZE],
             code,
             pc: 0,
             sp: 0,
+            csp: 0,
             cmp: 0,
             step_by_step: false,
             capture_output: false,
@@ -141,7 +146,6 @@ impl VM {
                 }
                 self.stack[self.sp] = self.regs[reg];
                 self.sp += 1;
-                println!("{}", self.sp);
                 Ok(res)
             }
             OpCode::POP => {
@@ -563,6 +567,30 @@ impl VM {
                 if self.cmp != 0 {
                     self.pc = addr;
                 }
+                Ok(res)
+            }
+            OpCode::CALL => {
+                let addr = {
+                    let addr = self.consume_addr();
+                    if addr.is_err() {
+                        return Err(addr.unwrap_err());
+                    }
+                    addr.unwrap()
+                };
+                if self.csp >= CALL_STACK_SIZE {
+                    return Err(err!("Call stack overflow"));
+                }
+                self.call_stack[self.csp] = self.pc;
+                self.csp += 1;
+                self.pc = addr;
+                Ok(res)
+            }
+            OpCode::RET => {
+                if self.csp == 0 {
+                    return Err(err!("Call stack underflow"));
+                }
+                self.csp -= 1;
+                self.pc = self.call_stack[self.csp];
                 Ok(res)
             }
             OpCode::DBGREG => {

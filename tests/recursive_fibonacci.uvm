@@ -1,0 +1,42 @@
+// recursive fibonacci implementation
+// meant to test CALL/RET instructions and the callstack functioning
+
+
+SET	20	r0
+PUSH	r0
+CALL	fibonacci
+POP	r0
+DBGREG	r0
+HALT
+
+
+fibonacci:
+	POP	r0		// n (the argument of the function)
+	CMPL	1	r0	// if (n <= 1)
+	JLE	fibonacci_ret_n	//	return n
+
+				// otherwise, return fib(n-1) + fib(n-2), so in steps...
+
+	DEC	r0		// r0 = n-1
+	PUSH	r0		// [n-1]
+	PUSH	r0		// [n-1, n-1]
+	
+	CALL	fibonacci	// [fib(n-1), n-1]
+	POP	r1		// r1 = fib(n-1)
+	POP	r0		// r0 = n-1
+	DEC	r0		// r0 = n-2
+	PUSH	r1		// [fib(n-1)]
+	PUSH	r0		// [n-2, fib(n-1)]
+	CALL	fibonacci	// [fib(n-2), fib(n-1)]
+
+	POP	r0		// r0 = fib(n-2)
+	POP	r1		// r1 = fib(n-1)
+
+	ADD	r1	r0	// r0 = fib(n-1) + fib(n-2) = fib(n)
+				// so let's return it
+	PUSH	r0
+	RET
+
+fibonacci_ret_n:
+	PUSH	r0
+	RET

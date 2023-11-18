@@ -107,3 +107,21 @@ fn test_rf_stack_ops() {
     }
     assert_eq!(vm.get_registers()[..10], [10, 11, 12, 13, 14, 15, 16, 17, 0, 0]);
 }
+
+#[test]
+fn test_fibonacci_recursion() {
+    let code = uvm::parser::parse_file("tests/recursive_fibonacci.uvm".to_string());
+    if !code.is_ok() {
+        println!("{}", code.unwrap_err());
+        assert!(false);
+        return;
+    }
+    let mut vm = uvm::vm::VM::new(code.unwrap());
+    let result = vm.run();
+    if !result.is_ok() {
+        println!("{}", result.unwrap_err());
+        assert!(false);
+        return;
+    }
+    assert_eq!(vm.get_registers()[0], 6765);
+}
