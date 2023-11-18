@@ -1,0 +1,20 @@
+PUSHL	5			// Factorial of 5
+CALL	factorial
+POP	r0
+DBGREG	r0
+HALT
+
+factorial:
+	POP	r0		// r0 = n <- we'll iterate here
+	SET	1	r1	// r1 = 1 <- we'll accumulate multiplications here
+	
+.loop:
+	CMPL	1	r0	// Compare r0 with 0
+	JEQ	.end		// When n == 0, jump to the end
+	MUL	r0	r1	// r1 = r0 * r1
+	DEC	r0		// r0 = r0 - 1
+	JMP	.loop		// Make the comparison again
+
+.end:
+	PUSH	r1
+	RET

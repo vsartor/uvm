@@ -30,8 +30,8 @@ They can be found at `src/asm.rs` where they will be up to date for sure. But, l
 | PUSH    | `rb`: Pushes the value of `rb` to the stack                                              |
 | PUSHL   | `x`: Pushes `x` to the stack                                                             |
 | POP     | `rb`: Pops the top of the stack to `rb`                                                  |
-| PUSHRF  | `x`: Saves the value of the first `n` registers to the stack                             |
-| POPRF   | `x`: Loads the value of the first `n` registers from the stack                           |
+| PUSHRF  | `x`: Saves the value of the first `x` registers to the stack                             |
+| POPRF   | `x`: Loads the value of the first `x` registers from the stack                           |
 | ADD     | `ra rb`: Adds `ra` and `rb` and stores the result in `rb`                                |
 | ADDL    | `x rb`: Adds `x` and `rb` and stores the result in `rb`                                  |
 | SUB     | `ra rb`: Subtracts `ra` from `rb` and stores the result in `rb`                          |
@@ -73,6 +73,32 @@ The "assembly" is a simple text format that can be assembled into bytecode. It's
 - There can be sublabels (e.g. `.sublabel:` below a `label:` gets expanded to `label.sublabel:`) for convenience
 - Literals are represented by numbers (e.g. `123`)
 - Comments are started by writing `//` and last until the end of the line (they can come after instructions or in lines by themselves)
+
+For example a valid program that calculates the factorial of 5 and prints it to stdout with the `DBGREG` instruction would be:
+
+```
+// Factorial of 5
+PUSHL	5
+CALL	factorial
+POP	r0
+DBGREG	r0
+HALT
+
+factorial:
+	POP	r0		// r0 = n <- we'll iterate here
+	SET	1	r1	// r1 = 1 <- we'll accumulate multiplications here
+	
+.loop:
+	CMPL	1	r0	// Compare r0 with 0
+	JEQ	.end		// When n == 0, jump to the end
+	MUL	r0	r1	// r1 = r0 * r1
+	DEC	r0		// r0 = r0 - 1
+	JMP	.loop		// Make the comparison again
+
+.end:
+	PUSH	r1
+	RET
+```
 
 ### Serialization
 
