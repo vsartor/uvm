@@ -125,3 +125,22 @@ fn test_fibonacci_recursion() {
     }
     assert_eq!(vm.get_registers()[0], 6765);
 }
+
+#[test]
+fn test_basic_float_arithmetic() {
+    let code = uvm::parser::parse_file("tests/basic_float_arithmetic.uvm".to_string());
+    if !code.is_ok() {
+        println!("{}", code.unwrap_err());
+        assert!(false);
+        return;
+    }
+    let mut vm = uvm::vm::VM::new(code.unwrap());
+    let result = vm.run();
+    if !result.is_ok() {
+        println!("{}", result.unwrap_err());
+        assert!(false);
+        return;
+    }
+    assert_eq!(vm.get_registers_as_floats()[..5], [3.14, 10.99, 4.396, -87.92, 88.02]);
+    assert_eq!(vm.get_registers()[5..7], [89, 88]);
+}

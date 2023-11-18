@@ -7,6 +7,8 @@ use num_enum::TryFromPrimitive;
 pub enum OpCode {
     HALT,    // Stops execution
     SET,     // x rb: Sets `rb` to `x`
+    SETF,    // x rb: Sets `rb` to `x` as a floating point value
+    MOV,     // ra rb: Sets `rb` to `ra`
     PUSH,    // rb: Pushes the value of `rb` to the stack
     PUSHL,   // x: Pushes `x` to the stack
     POP,     // rb: Pops the top of the stack to `rb`
@@ -25,6 +27,12 @@ pub enum OpCode {
     MOD,     // ra rb: Stores the remainder of `rb` divided by `ra` in `rb`
     INC,     // rb: Increments `rb` by 1
     DEC,     // rb: Decrements `rb` by 1
+    ADDF,    // ra rb: Floating point adds `ra` and `rb` and stores the result in `rb`
+    SUBF,    // ra rb: Floating point subtracts `ra` from `rb` and stores the result in `rb`
+    MULF,    // ra rb: Floating point multiplies `ra` and `rb` and stores the result in `rb`
+    DIVF,    // ra rb: Floating point divides `rb` by `ra` and stores the result in `rb`
+    CEIL,    // rb: Rounds `rb` up to the nearest integer
+    FLOR,    // rb: Rounds `rb` down to the nearest integer
     CMP,     // ra rb: Compares `rb` and `ra` and stores the result in `cmp` (e.g. GT if `rb` > `ra`)
     CMPL,    // x rb: Compares `rb` and `x` and stores the result in `cmp` (e.g. GT if `rb` > `x`)
     JMP,     // addr: Jumps to `addr`
@@ -37,6 +45,7 @@ pub enum OpCode {
     CALL,    // addr: Calls the function at `addr` saving the current address in the call stack
     RET,     // Returns from a function (pops the call stack and jumps to the saved address)
     DBGREG,  // rb: Prints the value of `rb` to stdout for debugging
+    DBGREGF, // rb: Prints the value of `rb` as a floating point value to stdout for debugging
     DBGREGS, // Prints the values of all registers to stdout for debugging
 }
 
@@ -61,6 +70,8 @@ impl std::fmt::Display for OpCode {
             None => match self {
                 OpCode::HALT => write!(f, "HALT"),
                 OpCode::SET => write!(f, "SET"),
+                OpCode::SETF => write!(f, "SETF"),
+                OpCode::MOV => write!(f, "MOV"),
                 OpCode::PUSH => write!(f, "PUSH"),
                 OpCode::PUSHL => write!(f, "PUSHL"),
                 OpCode::POP => write!(f, "POP"),
@@ -79,6 +90,12 @@ impl std::fmt::Display for OpCode {
                 OpCode::MOD => write!(f, "MOD"),
                 OpCode::INC => write!(f, "INC"),
                 OpCode::DEC => write!(f, "DEC"),
+                OpCode::ADDF => write!(f, "ADDF"),
+                OpCode::SUBF => write!(f, "SUBF"),
+                OpCode::MULF => write!(f, "MULF"),
+                OpCode::DIVF => write!(f, "DIVF"),
+                OpCode::CEIL => write!(f, "CEIL"),
+                OpCode::FLOR => write!(f, "FLOR"),
                 OpCode::CMP => write!(f, "CMP"),
                 OpCode::CMPL => write!(f, "CMPL"),
                 OpCode::JMP => write!(f, "JMP"),
@@ -91,6 +108,7 @@ impl std::fmt::Display for OpCode {
                 OpCode::CALL => write!(f, "CALL"),
                 OpCode::RET => write!(f, "RET"),
                 OpCode::DBGREG => write!(f, "DBGREG"),
+                OpCode::DBGREGF => write!(f, "DBGREGF"),
                 OpCode::DBGREGS => write!(f, "DBGREGS"),
             },
             Some(_) => f.pad(&self.to_string()),
@@ -105,6 +123,8 @@ impl std::str::FromStr for OpCode {
         match s {
             "HALT" => Ok(OpCode::HALT),
             "SET" => Ok(OpCode::SET),
+            "SETF" => Ok(OpCode::SETF),
+            "MOV" => Ok(OpCode::MOV),
             "PUSH" => Ok(OpCode::PUSH),
             "PUSHL" => Ok(OpCode::PUSHL),
             "POP" => Ok(OpCode::POP),
@@ -123,6 +143,12 @@ impl std::str::FromStr for OpCode {
             "MOD" => Ok(OpCode::MOD),
             "INC" => Ok(OpCode::INC),
             "DEC" => Ok(OpCode::DEC),
+            "ADDF" => Ok(OpCode::ADDF),
+            "SUBF" => Ok(OpCode::SUBF),
+            "MULF" => Ok(OpCode::MULF),
+            "DIVF" => Ok(OpCode::DIVF),
+            "CEIL" => Ok(OpCode::CEIL),
+            "FLOR" => Ok(OpCode::FLOR),
             "CMP" => Ok(OpCode::CMP),
             "CMPL" => Ok(OpCode::CMPL),
             "JMP" => Ok(OpCode::JMP),
@@ -135,6 +161,7 @@ impl std::str::FromStr for OpCode {
             "CALL" => Ok(OpCode::CALL),
             "RET" => Ok(OpCode::RET),
             "DBGREG" => Ok(OpCode::DBGREG),
+            "DBGREGF" => Ok(OpCode::DBGREGF),
             "DBGREGS" => Ok(OpCode::DBGREGS),
             _ => Err(err!("Failed to parse opcode: {}", s)),
         }
@@ -149,42 +176,52 @@ pub enum OpArgT {
     RegReg,
     Addr,
     Int,
+    RealReg,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 33] = [
-    OpArgT::Nil,    // HALT
-    OpArgT::IntReg, // SET
-    OpArgT::Reg,    // PUSH
-    OpArgT::Int,    // PUSHL
-    OpArgT::Reg,    // POP
-    OpArgT::Int,    // PUSHRF
-    OpArgT::Int,    // POPRF
-    OpArgT::RegReg, // ADD
-    OpArgT::IntReg, // ADDL
-    OpArgT::RegReg, // SUB
-    OpArgT::IntReg, // SUBLA
-    OpArgT::IntReg, // SUBLB
-    OpArgT::RegReg, // MUL
-    OpArgT::IntReg, // MULL
-    OpArgT::RegReg, // DIV
-    OpArgT::IntReg, // DIVLA
-    OpArgT::IntReg, // DIVLB
-    OpArgT::RegReg, // MOD
-    OpArgT::Reg,    // INC
-    OpArgT::Reg,    // DEC
-    OpArgT::RegReg, // CMP
-    OpArgT::IntReg, // CMPL
-    OpArgT::Addr,   // JMP
-    OpArgT::Addr,   // JEQ
-    OpArgT::Addr,   // JLT
-    OpArgT::Addr,   // JLE
-    OpArgT::Addr,   // JGT
-    OpArgT::Addr,   // JGE
-    OpArgT::Addr,   // JNE
-    OpArgT::Addr,   // CALL
-    OpArgT::Nil,    // RET
-    OpArgT::Reg,    // DBGREG
-    OpArgT::Nil,    // DBGREGS
+pub const OP_ARG_TYPES: [OpArgT; 42] = [
+    OpArgT::Nil,     // HALT
+    OpArgT::IntReg,  // SET
+    OpArgT::RealReg, // SETF
+    OpArgT::RegReg,  // MOV
+    OpArgT::Reg,     // PUSH
+    OpArgT::Int,     // PUSHL
+    OpArgT::Reg,     // POP
+    OpArgT::Int,     // PUSHRF
+    OpArgT::Int,     // POPRF
+    OpArgT::RegReg,  // ADD
+    OpArgT::IntReg,  // ADDL
+    OpArgT::RegReg,  // SUB
+    OpArgT::IntReg,  // SUBLA
+    OpArgT::IntReg,  // SUBLB
+    OpArgT::RegReg,  // MUL
+    OpArgT::IntReg,  // MULL
+    OpArgT::RegReg,  // DIV
+    OpArgT::IntReg,  // DIVLA
+    OpArgT::IntReg,  // DIVLB
+    OpArgT::RegReg,  // MOD
+    OpArgT::Reg,     // INC
+    OpArgT::Reg,     // DEC
+    OpArgT::RegReg,  // ADDF
+    OpArgT::RegReg,  // SUBF
+    OpArgT::RegReg,  // MULF
+    OpArgT::RegReg,  // DIVF
+    OpArgT::Reg,     // CEIL
+    OpArgT::Reg,     // FLOR
+    OpArgT::RegReg,  // CMP
+    OpArgT::IntReg,  // CMPL
+    OpArgT::Addr,    // JMP
+    OpArgT::Addr,    // JEQ
+    OpArgT::Addr,    // JLT
+    OpArgT::Addr,    // JLE
+    OpArgT::Addr,    // JGT
+    OpArgT::Addr,    // JGE
+    OpArgT::Addr,    // JNE
+    OpArgT::Addr,    // CALL
+    OpArgT::Nil,     // RET
+    OpArgT::Reg,     // DBGREG
+    OpArgT::Reg,     // DBGREGF
+    OpArgT::Nil,     // DBGREGS
 ];
 
 #[derive(Debug, PartialEq)]
@@ -193,6 +230,7 @@ pub enum Code {
     Reg(u8),
     Int(i64),
     Addr(usize),
+    Real(f64),
 }
 
 impl std::fmt::Display for Code {
@@ -203,6 +241,7 @@ impl std::fmt::Display for Code {
                 Code::Reg(reg) => write!(f, "r{}", reg),
                 Code::Int(val) => write!(f, "{}i", val),
                 Code::Addr(addr) => write!(f, "addr({})", addr),
+                Code::Real(val) => write!(f, "{}f", val),
             },
             Some(_) => f.pad(&self.to_string()),
         }
@@ -249,6 +288,10 @@ pub fn display_code(code: &Vec<Code>) {
             OpArgT::Int => {
                 println!("│ {:04} {} {}", idx, code[idx], code[idx + 1]);
                 idx += 2;
+            }
+            OpArgT::RealReg => {
+                println!("│ {:04} {} {} {}", idx, code[idx], code[idx + 1], code[idx + 2]);
+                idx += 3;
             }
         }
     }
@@ -313,6 +356,11 @@ pub fn displayable_code(code: &Vec<Code>) -> (Vec<String>, HashMap<usize, usize>
                 displayable_code.push(format!("{} {}", code[idx], code[idx + 1]));
                 addr2idx.insert(idx, displayable_code.len() - 1);
                 idx += 2;
+            }
+            OpArgT::RealReg => {
+                displayable_code.push(format!("{} {} {}", code[idx], code[idx + 1], code[idx + 2]));
+                addr2idx.insert(idx, displayable_code.len() - 1);
+                idx += 3;
             }
         }
     }

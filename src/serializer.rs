@@ -21,6 +21,7 @@ pub fn serialize(code: &Vec<Code>) -> Result<Vec<u8>, String> {
     // 1 byte for opcode
     // 1 byte for register
     // 8 bytes for integer
+    // 8 bytes for floats
     // 8 bytes for address
 
     while idx < code.len() {
@@ -96,6 +97,22 @@ pub fn serialize(code: &Vec<Code>) -> Result<Vec<u8>, String> {
                 };
                 binary.extend(int.to_le_bytes());
                 idx += 2;
+            }
+            OpArgT::RealReg => {
+                binary.extend(op.to_le_bytes());
+
+                let real = match code[idx + 1] {
+                    Code::Real(real) => real,
+                    _ => return Err(err!("Expected a real, but got {}", code[idx + 1])),
+                };
+                binary.extend(real.to_le_bytes());
+
+                let reg = match code[idx + 2] {
+                    Code::Reg(reg) => reg,
+                    _ => return Err(err!("Expected a register, but got {}", code[idx + 2])),
+                };
+                binary.extend(reg.to_le_bytes());
+                idx += 3;
             }
         }
     }
@@ -202,6 +219,23 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
                 code.push(Code::Op(op));
                 code.push(Code::Int(int));
                 idx += 9;
+            }
+            OpArgT::RealReg => {
+                let real = f64::from_le_bytes([
+                    binary[idx + 1],
+                    binary[idx + 2],
+                    binary[idx + 3],
+                    binary[idx + 4],
+                    binary[idx + 5],
+                    binary[idx + 6],
+                    binary[idx + 7],
+                    binary[idx + 8],
+                ]);
+                let reg = u8::from_le_bytes([binary[idx + 9]]);
+                code.push(Code::Op(op));
+                code.push(Code::Real(real));
+                code.push(Code::Reg(reg));
+                idx += 10;
             }
         }
     }

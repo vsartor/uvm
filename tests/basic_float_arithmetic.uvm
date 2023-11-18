@@ -1,0 +1,36 @@
+
+// Addition
+SETF	3.14	r0
+SETF	7.85	r1
+ADDF	r0	r1	// r1 = 10.99f
+
+// Division
+SETF	10.99	r2
+SETF	2.5	r3
+DIVF	r3	r2	// r2 = 4.396f
+
+// Multiplication
+SETF	-20	r3
+MULF	r2	r3	// r3 = -87.92f
+
+// Subtraction
+SETF	0.1	r4
+SUBF	r3	r4	// r4 = 88.02f
+
+// Ceiling
+MOV	r4	r5
+CEIL	r5		// r5 = 89i
+
+// Floor
+MOV	r4	r6
+FLOR	r6		// r6 = 88i
+
+DBGREGF	r0
+DBGREGF	r1
+DBGREGF	r2
+DBGREGF	r3
+DBGREGF	r4
+DBGREG	r5
+DBGREG	r6
+
+HALT

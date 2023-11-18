@@ -197,6 +197,32 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
                 code.push(Code::Op(op));
                 code.push(Code::Int(int));
             }
+            OpArgT::RealReg => {
+                let val = {
+                    let val = consume_real(&mut parts, op, &ctxt);
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+
+                let reg = {
+                    let reg = consume_reg(&mut parts, op, &ctxt);
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+
+                let line_is_over_chck = validate_line_is_over(&mut parts, op, &ctxt);
+                if line_is_over_chck.is_err() {
+                    return Err(line_is_over_chck.unwrap_err());
+                }
+
+                code.push(Code::Op(op));
+                code.push(Code::Real(val));
+                code.push(Code::Reg(reg));
+            }
         }
     }
 
@@ -273,6 +299,25 @@ fn consume_reg(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -
         ));
     }
     Ok(reg.unwrap())
+}
+
+fn consume_real(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -> Result<f64, String> {
+    let val = parts.next();
+    if val.is_none() {
+        return Err(err!("{}.{}: {} expected to find a real but found nothing", ctxt.filename, ctxt.line, op));
+    }
+    let val = val.unwrap();
+    let val = f64::from_str(val);
+    if val.is_err() {
+        return Err(err!(
+            "{}.{}: {} expected to find a real but got {}",
+            ctxt.filename,
+            ctxt.line,
+            op,
+            val.unwrap_err()
+        ));
+    }
+    Ok(val.unwrap())
 }
 
 fn validate_line_is_over(parts: &mut std::str::SplitWhitespace, op: OpCode, ctxt: &Ctxt) -> Result<(), String> {

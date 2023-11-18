@@ -1,6 +1,9 @@
 use std::io::Write;
 
-use crate::asm::{displayable_code, Code, OpCode};
+use crate::{
+    asm::{displayable_code, Code, OpCode},
+    utils::{f2i, i2f},
+};
 
 const NUM_REGISTERS: usize = 16;
 const STACK_SIZE: usize = 8 * 1024;
@@ -45,6 +48,14 @@ impl VM {
 
     pub fn get_registers(&self) -> [i64; NUM_REGISTERS] {
         self.regs
+    }
+
+    pub fn get_registers_as_floats(&self) -> [f64; NUM_REGISTERS] {
+        let mut regs = [0.0; NUM_REGISTERS];
+        for i in 0..NUM_REGISTERS {
+            regs[i] = i2f(self.regs[i]);
+        }
+        regs
     }
 
     pub fn get_cmp(&self) -> i8 {
@@ -95,6 +106,16 @@ impl VM {
         }
     }
 
+    fn consume_real(&mut self) -> Result<f64, String> {
+        match self.code[self.pc] {
+            Code::Real(val) => {
+                self.pc += 1;
+                Ok(val)
+            }
+            _ => Err(err!("Expected a real, but got {} at {}", self.code[self.pc], self.pc)),
+        }
+    }
+
     fn step(&mut self) -> Result<StepResult, String> {
         let mut res = StepResult {
             continue_running: true,
@@ -126,6 +147,45 @@ impl VM {
                     reg.unwrap()
                 };
                 self.regs[reg] = val;
+                Ok(res)
+            }
+            OpCode::SETF => {
+                let val = {
+                    let val = self.consume_real();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+
+                // store in the register as an integer
+                let val = f2i(val);
+                self.regs[reg] = val;
+                Ok(res)
+            }
+            OpCode::MOV => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                self.regs[reg1] = self.regs[reg0];
                 Ok(res)
             }
             OpCode::PUSH => {
@@ -445,6 +505,136 @@ impl VM {
                 self.regs[reg] -= 1;
                 Ok(res)
             }
+            OpCode::ADDF => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val1 + val2;
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::SUBF => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val2 - val1;
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::MULF => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val1 * val2;
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::DIVF => {
+                let reg0 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let reg1 = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val1 = i2f(self.regs[reg0]);
+                let val2 = i2f(self.regs[reg1]);
+                let val = val2 / val1;
+
+                // store in the register as an integer
+                self.regs[reg1] = f2i(val);
+                Ok(res)
+            }
+            OpCode::CEIL => {
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val = i2f(self.regs[reg]);
+                if val > std::i64::MAX as f64 || val < std::i64::MIN as f64 {
+                    return Err(err!("CEIL overflow"));
+                }
+
+                self.regs[reg] = val.ceil() as i64;
+                Ok(res)
+            }
+            OpCode::FLOR => {
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+
+                let val = i2f(self.regs[reg]);
+                if val > std::i64::MAX as f64 || val < std::i64::MIN as f64 {
+                    return Err(err!("FLOR overflow"));
+                }
+
+                self.regs[reg] = val.floor() as i64;
+                Ok(res)
+            }
             OpCode::CMP => {
                 let reg0 = {
                     let reg = self.consume_reg();
@@ -614,6 +804,18 @@ impl VM {
                 res.output = Some(dbg!("r{} = {}", reg, self.regs[reg]));
                 Ok(res)
             }
+            OpCode::DBGREGF => {
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap() as usize
+                };
+                let val = i2f(self.regs[reg]);
+                res.output = Some(dbg!("r{} = {}", reg, val));
+                Ok(res)
+            }
             OpCode::DBGREGS => {
                 res.output = Some(dbg!("regs = {:?}", self.regs));
                 Ok(res)
@@ -759,8 +961,14 @@ impl VM {
                             }
                             addr.unwrap()
                         };
-                        println!("Breakpoint set at address {}", addr);
-                        breakpoints.push(addr);
+
+                        if breakpoints.contains(&addr) {
+                            println!("Breakpoint at {} was removed", addr);
+                            breakpoints.retain(|&x| x != addr);
+                        } else {
+                            println!("Breakpoint set at address {}", addr);
+                            breakpoints.push(addr);
+                        }
                     }
                     "c" | "code" => {
                         allowed_to_run = false;
