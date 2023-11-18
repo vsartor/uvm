@@ -1,4 +1,7 @@
-#[derive(Copy, Clone, Debug, PartialEq)]
+use num_enum::TryFromPrimitive;
+
+#[derive(Copy, Clone, Debug, PartialEq, TryFromPrimitive)]
+#[repr(u8)]
 pub enum OpCode {
     HALT,    // Stops execution
     SET,     // x rb: Sets `rb` to `x`
@@ -33,6 +36,21 @@ pub enum OpCode {
     RET,     // Returns from a function (pops the call stack and jumps to the saved address)
     DBGREG,  // rb: Prints the value of `rb` to stdout for debugging
     DBGREGS, // Prints the values of all registers to stdout for debugging
+}
+
+impl OpCode {
+    pub fn to_be_bytes(&self) -> [u8; 1] {
+        (*self as u8).to_be_bytes()
+    }
+
+    pub fn from_be_bytes(bytes: [u8; 1]) -> Option<OpCode> {
+        let byte = u8::from_be_bytes(bytes);
+        let op = OpCode::try_from_primitive(byte);
+        if op.is_err() {
+            return None;
+        }
+        Some(op.unwrap())
+    }
 }
 
 impl std::fmt::Display for OpCode {
