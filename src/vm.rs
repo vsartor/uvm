@@ -62,140 +62,98 @@ impl VM {
         self.cmp
     }
 
-    fn consume_op(&mut self) -> Result<OpCode, String> {
+    fn consume_op(&mut self) -> OpCode {
         match self.code[self.pc] {
             Code::Op(op) => {
                 self.pc += 1;
-                Ok(op)
+                op
             }
-            _ => Err(err!("Expected an opcode, but got {} at {}", self.code[self.pc], self.pc)),
+            _ => panic!("Expected OpCode but got {}", self.code[self.pc]),
         }
     }
 
-    fn consume_reg(&mut self) -> Result<usize, String> {
+    fn consume_reg(&mut self) -> usize {
         match self.code[self.pc] {
             Code::Reg(reg) => {
                 if reg as usize >= NUM_REGISTERS {
-                    return Err(err!("Register {} out of bounds (>{})", reg, NUM_REGISTERS - 1));
+                    panic!("Register index out of bounds: {}", reg);
                 }
 
                 self.pc += 1;
-                Ok(reg as usize)
+                reg as usize
             }
-            _ => Err(err!("Expected a register, but got {} at {}", self.code[self.pc], self.pc)),
+            _ => panic!("Expected a register, but got {} at {}", self.code[self.pc], self.pc),
         }
     }
 
-    fn consume_int(&mut self) -> Result<i64, String> {
+    fn consume_int(&mut self) -> i64 {
         match self.code[self.pc] {
             Code::Int(val) => {
                 self.pc += 1;
-                Ok(val)
+                val
             }
-            _ => Err(err!("Expected an integer, but got {} at {}", self.code[self.pc], self.pc)),
+            _ => panic!("Expected an integer, but got {} at {}", self.code[self.pc], self.pc),
         }
     }
 
-    fn consume_addr(&mut self) -> Result<usize, String> {
+    fn consume_addr(&mut self) -> usize {
         match self.code[self.pc] {
             Code::Addr(addr) => {
                 self.pc += 1;
-                Ok(addr)
+                addr
             }
-            _ => Err(err!("Expected an address, but got {} at {}", self.code[self.pc], self.pc)),
+            _ => panic!("Expected an address, but got {} at {}", self.code[self.pc], self.pc),
         }
     }
 
-    fn consume_real(&mut self) -> Result<f64, String> {
+    fn consume_real(&mut self) -> f64 {
         match self.code[self.pc] {
             Code::Real(val) => {
                 self.pc += 1;
-                Ok(val)
+                val
             }
-            _ => Err(err!("Expected a real, but got {} at {}", self.code[self.pc], self.pc)),
+            _ => panic!("Expected a real, but got {} at {}", self.code[self.pc], self.pc),
         }
     }
 
     fn step(&mut self) -> Result<StepResult, String> {
+        // At one point I changed this to instead of continuously checking and trying to
+        // propagate errors if `code` was incorrectly built (e.g. SET is not actually followed
+        // by an integer and register, respectively). However, both parsing and deserialization
+        // are well tested so I simplified things to just panic b/c it should never happen for
+        // regular usage anyway.
+
         let mut res = StepResult {
             continue_running: true,
             output: None,
         };
 
-        let op = self.consume_op();
-        if op.is_err() {
-            return Err(op.unwrap_err());
-        }
-        match op.unwrap() {
+        match self.consume_op() {
             OpCode::HALT => {
                 res.continue_running = false;
                 Ok(res)
             }
             OpCode::SET => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] = val;
                 Ok(res)
             }
             OpCode::SETF => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-
-                // store in the register as an integer
+                let val = self.consume_real();
+                let reg = self.consume_reg();
                 let val = f2i(val);
                 self.regs[reg] = val;
                 Ok(res)
             }
             OpCode::MOV => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] = self.regs[reg0];
                 Ok(res)
             }
             OpCode::PUSH => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg = self.consume_reg();
                 if self.sp >= STACK_SIZE {
                     return Err(err!("Stack overflow"));
                 }
@@ -204,13 +162,7 @@ impl VM {
                 Ok(res)
             }
             OpCode::PUSHL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
+                let val = self.consume_int();
                 if self.sp >= STACK_SIZE {
                     return Err(err!("Stack overflow"));
                 }
@@ -219,13 +171,7 @@ impl VM {
                 Ok(res)
             }
             OpCode::POP => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg = self.consume_reg();
                 if self.sp == 0 {
                     return Err(err!("Stack underflow"));
                 }
@@ -234,13 +180,7 @@ impl VM {
                 Ok(res)
             }
             OpCode::PUSHRF => {
-                let frame_size = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
+                let frame_size = self.consume_int();
                 // validate that the value is actually between 1 and NUM_REGISTERS-1
                 if frame_size < 1 || frame_size as usize >= NUM_REGISTERS {
                     return Err(err!("PUSHRF received a register frame size of {} out of bounds", frame_size));
@@ -250,23 +190,15 @@ impl VM {
                 if self.sp + frame_size >= STACK_SIZE {
                     return Err(err!("PUSHRF {}: stack overflow", frame_size));
                 }
-
                 // push the first `frame_size` registers from lowest to highest
                 for reg in 0..frame_size {
                     self.stack[self.sp] = self.regs[reg];
                     self.sp += 1;
                 }
-
                 Ok(res)
             }
             OpCode::POPRF => {
-                let frame_size = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
+                let frame_size = self.consume_int();
                 // validate that the value is actually between 1 and NUM_REGISTERS-1
                 if frame_size < 1 || frame_size as usize >= NUM_REGISTERS {
                     return Err(err!("POPRF received a register frame size of {} out of bounds", frame_size));
@@ -276,250 +208,92 @@ impl VM {
                 if self.sp < frame_size {
                     return Err(err!("POPRF {}: stack underflow", frame_size));
                 }
-
                 // pop the first `frame_size` registers from highest to lowest (opposite of PUSHRF)
                 for reg in (0..frame_size).rev() {
                     self.sp -= 1;
                     self.regs[reg] = self.stack[self.sp];
                 }
-
                 Ok(res)
             }
             OpCode::ADD => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] += self.regs[reg0];
                 Ok(res)
             }
             OpCode::ADDL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] += val;
                 Ok(res)
             }
             OpCode::SUB => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] -= self.regs[reg0];
                 Ok(res)
             }
             OpCode::SUBL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] -= val;
                 Ok(res)
             }
             OpCode::SUB2L => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] = val - self.regs[reg];
                 Ok(res)
             }
             OpCode::MUL => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] *= self.regs[reg0];
                 Ok(res)
             }
             OpCode::MULL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] *= val;
                 Ok(res)
             }
             OpCode::DIV => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] /= self.regs[reg0];
                 Ok(res)
             }
             OpCode::DIVL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] /= val;
                 Ok(res)
             }
             OpCode::DIV2L => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 self.regs[reg] = val / self.regs[reg];
                 Ok(res)
             }
             OpCode::MOD => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.regs[reg1] %= self.regs[reg0];
                 Ok(res)
             }
             OpCode::INC => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg = self.consume_reg();
                 self.regs[reg] += 1;
                 Ok(res)
             }
             OpCode::DEC => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg = self.consume_reg();
                 self.regs[reg] -= 1;
                 Ok(res)
             }
             OpCode::ADDF => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -530,20 +304,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::ADDFL => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -554,20 +316,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::SUBF => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -578,20 +328,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::SUBFL => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -602,20 +340,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::SUBF2L => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -626,20 +352,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::MULF => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -650,20 +364,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::MULFL => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -674,20 +376,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::DIVF => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -698,20 +388,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::DIVFL => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -722,20 +400,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::DIVF2L => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg]);
@@ -746,20 +412,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::POW => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -770,20 +424,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::POW2 => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
 
                 let val1 = i2f(self.regs[reg0]);
                 let val2 = i2f(self.regs[reg1]);
@@ -794,20 +436,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::POWL => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg0 = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg0]);
@@ -818,20 +448,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::POW2L => {
-                let val = {
-                    let val = self.consume_real();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let val = self.consume_real();
+                let reg0 = self.consume_reg();
 
                 let val1 = val;
                 let val2 = i2f(self.regs[reg0]);
@@ -842,13 +460,7 @@ impl VM {
                 Ok(res)
             }
             OpCode::CEIL => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg = self.consume_reg();
 
                 let val = i2f(self.regs[reg]);
                 if val > std::i64::MAX as f64 || val < std::i64::MIN as f64 {
@@ -859,13 +471,7 @@ impl VM {
                 Ok(res)
             }
             OpCode::FLOR => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg = self.consume_reg();
 
                 let val = i2f(self.regs[reg]);
                 if val > std::i64::MAX as f64 || val < std::i64::MIN as f64 {
@@ -876,20 +482,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::CMP => {
-                let reg0 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
-                let reg1 = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg0 = self.consume_reg();
+                let reg1 = self.consume_reg();
                 self.cmp = match self.regs[reg1].cmp(&self.regs[reg0]) {
                     std::cmp::Ordering::Less => -1,
                     std::cmp::Ordering::Equal => 0,
@@ -898,20 +492,8 @@ impl VM {
                 Ok(res)
             }
             OpCode::CMPL => {
-                let val = {
-                    let val = self.consume_int();
-                    if val.is_err() {
-                        return Err(val.unwrap_err());
-                    }
-                    val.unwrap()
-                };
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let val = self.consume_int();
+                let reg = self.consume_reg();
                 // Set the flag to -1, 0, or 1 depending on the comparison result.
                 self.cmp = match self.regs[reg].cmp(&val) {
                     std::cmp::Ordering::Less => -1,
@@ -921,102 +503,54 @@ impl VM {
                 Ok(res)
             }
             OpCode::JMP => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 self.pc = addr;
                 Ok(res)
             }
             OpCode::JEQ => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp == 0 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::JLT => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp == -1 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::JLE => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp <= 0 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::JGT => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp == 1 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::JGE => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp >= 0 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::JNE => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.cmp != 0 {
                     self.pc = addr;
                 }
                 Ok(res)
             }
             OpCode::CALL => {
-                let addr = {
-                    let addr = self.consume_addr();
-                    if addr.is_err() {
-                        return Err(addr.unwrap_err());
-                    }
-                    addr.unwrap()
-                };
+                let addr = self.consume_addr();
                 if self.csp >= CALL_STACK_SIZE {
                     return Err(err!("Call stack overflow"));
                 }
@@ -1034,24 +568,12 @@ impl VM {
                 Ok(res)
             }
             OpCode::DBGREG => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap()
-                };
+                let reg = self.consume_reg();
                 res.output = Some(dbg!("r{} = {}", reg, self.regs[reg]));
                 Ok(res)
             }
             OpCode::DBGREGF => {
-                let reg = {
-                    let reg = self.consume_reg();
-                    if reg.is_err() {
-                        return Err(reg.unwrap_err());
-                    }
-                    reg.unwrap() as usize
-                };
+                let reg = self.consume_reg();
                 let val = i2f(self.regs[reg]);
                 res.output = Some(dbg!("r{} = {}", reg, val));
                 Ok(res)
@@ -1364,62 +886,68 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_int_as_opcode() {
         #[rustfmt::skip]
         let code = vec![
             Code::Int(42)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_int_as_reg() {
         #[rustfmt::skip]
         let code = vec![
             Code::Op(OpCode::SET), Code::Int(42), Code::Int(0)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_reg_as_opcode() {
         #[rustfmt::skip]
         let code = vec![
             Code::Reg(0)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_reg_as_int() {
         #[rustfmt::skip]
         let code = vec![
             Code::Op(OpCode::SET), Code::Reg(0), Code::Reg(0)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_op_as_int() {
         #[rustfmt::skip]
         let code = vec![
             Code::Op(OpCode::SET), Code::Op(OpCode::HALT), Code::Reg(0)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 
     #[test]
+    #[should_panic]
     fn test_fails_on_op_as_reg() {
         #[rustfmt::skip]
         let code = vec![
             Code::Op(OpCode::SET), Code::Reg(0), Code::Op(OpCode::HALT)
         ];
         let mut vm = VM::new(code);
-        assert!(vm.run().is_err());
+        let _ = vm.run();
     }
 }
