@@ -27,69 +27,69 @@ pub fn serialize(code: &Vec<Code>) -> Result<Vec<u8>, String> {
 
         match arg_t {
             OpArgT::Nil => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
                 idx += 1;
             }
             OpArgT::Reg => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
 
                 let reg = match code[idx + 1] {
                     Code::Reg(reg) => reg,
                     _ => return Err(err!("Expected a register, but got {}", code[idx + 1])),
                 };
-                binary.extend(reg.to_be_bytes());
+                binary.extend(reg.to_le_bytes());
                 idx += 2;
             }
             OpArgT::IntReg => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
 
                 let int = match code[idx + 1] {
                     Code::Int(int) => int,
                     _ => return Err(err!("Expected an integer, but got {}", code[idx + 1])),
                 };
-                binary.extend(int.to_be_bytes());
+                binary.extend(int.to_le_bytes());
 
                 let reg = match code[idx + 2] {
                     Code::Reg(reg) => reg,
                     _ => return Err(err!("Expected a register, but got {}", code[idx + 2])),
                 };
-                binary.extend(reg.to_be_bytes());
+                binary.extend(reg.to_le_bytes());
                 idx += 3;
             }
             OpArgT::RegReg => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
 
                 let reg1 = match code[idx + 1] {
                     Code::Reg(reg) => reg,
                     _ => return Err(err!("Expected a register, but got {}", code[idx + 1])),
                 };
-                binary.extend(reg1.to_be_bytes());
+                binary.extend(reg1.to_le_bytes());
 
                 let reg2 = match code[idx + 2] {
                     Code::Reg(reg) => reg,
                     _ => return Err(err!("Expected a register, but got {}", code[idx + 2])),
                 };
-                binary.extend(reg2.to_be_bytes());
+                binary.extend(reg2.to_le_bytes());
                 idx += 3;
             }
             OpArgT::Addr => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
 
                 let addr = match code[idx + 1] {
                     Code::Addr(addr) => addr,
                     _ => return Err(err!("Expected an address, but got {}", code[idx + 1])),
                 };
-                binary.extend(addr.to_be_bytes());
+                binary.extend(addr.to_le_bytes());
                 idx += 2;
             }
             OpArgT::Int => {
-                binary.extend(op.to_be_bytes());
+                binary.extend(op.to_le_bytes());
 
                 let int = match code[idx + 1] {
                     Code::Int(int) => int,
                     _ => return Err(err!("Expected an integer, but got {}", code[idx + 1])),
                 };
-                binary.extend(int.to_be_bytes());
+                binary.extend(int.to_le_bytes());
                 idx += 2;
             }
         }
@@ -124,7 +124,7 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
 
     while idx < binary.len() {
         // get the opcode
-        let op = match OpCode::from_be_bytes([binary[idx]]) {
+        let op = match OpCode::from_le_bytes([binary[idx]]) {
             Some(op) => op,
             None => return Err(err!("Invalid opcode: {}", binary[idx])),
         };
@@ -138,13 +138,13 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
                 idx += 1;
             }
             OpArgT::Reg => {
-                let reg = u8::from_be_bytes([binary[idx + 1]]);
+                let reg = u8::from_le_bytes([binary[idx + 1]]);
                 code.push(Code::Op(op));
                 code.push(Code::Reg(reg));
                 idx += 2;
             }
             OpArgT::IntReg => {
-                let int = i64::from_be_bytes([
+                let int = i64::from_le_bytes([
                     binary[idx + 1],
                     binary[idx + 2],
                     binary[idx + 3],
@@ -154,22 +154,22 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
                     binary[idx + 7],
                     binary[idx + 8],
                 ]);
-                let reg = u8::from_be_bytes([binary[idx + 9]]);
+                let reg = u8::from_le_bytes([binary[idx + 9]]);
                 code.push(Code::Op(op));
                 code.push(Code::Int(int));
                 code.push(Code::Reg(reg));
                 idx += 10;
             }
             OpArgT::RegReg => {
-                let reg1 = u8::from_be_bytes([binary[idx + 1]]);
-                let reg2 = u8::from_be_bytes([binary[idx + 2]]);
+                let reg1 = u8::from_le_bytes([binary[idx + 1]]);
+                let reg2 = u8::from_le_bytes([binary[idx + 2]]);
                 code.push(Code::Op(op));
                 code.push(Code::Reg(reg1));
                 code.push(Code::Reg(reg2));
                 idx += 3;
             }
             OpArgT::Addr => {
-                let addr = usize::from_be_bytes([
+                let addr = usize::from_le_bytes([
                     binary[idx + 1],
                     binary[idx + 2],
                     binary[idx + 3],
@@ -184,7 +184,7 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
                 idx += 9;
             }
             OpArgT::Int => {
-                let int = i64::from_be_bytes([
+                let int = i64::from_le_bytes([
                     binary[idx + 1],
                     binary[idx + 2],
                     binary[idx + 3],

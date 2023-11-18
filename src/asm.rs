@@ -39,12 +39,12 @@ pub enum OpCode {
 }
 
 impl OpCode {
-    pub fn to_be_bytes(&self) -> [u8; 1] {
-        (*self as u8).to_be_bytes()
+    pub fn to_le_bytes(&self) -> [u8; 1] {
+        (*self as u8).to_le_bytes()
     }
 
-    pub fn from_be_bytes(bytes: [u8; 1]) -> Option<OpCode> {
-        let byte = u8::from_be_bytes(bytes);
+    pub fn from_le_bytes(bytes: [u8; 1]) -> Option<OpCode> {
+        let byte = u8::from_le_bytes(bytes);
         let op = OpCode::try_from_primitive(byte);
         if op.is_err() {
             return None;

@@ -1,4 +1,4 @@
-use uvm::{self, asm::display_code};
+use uvm;
 
 #[test]
 fn serialize_and_deserialize_fibonacci() {
