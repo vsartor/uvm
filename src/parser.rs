@@ -36,6 +36,8 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
     let mut label_refs: HashMap<usize, String> = std::collections::HashMap::new();
     // after parsing the program, we substitute label_refs by the actual "address"
 
+    let mut current_parent_label: String = "__beggining_of_program__".to_string();
+
     for line in raw_code.lines() {
         ctxt.inc(); // increment line number
 
@@ -51,12 +53,24 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
         // raw_op can either be an actual op or a label, so let's check if it's a label first
         // if it is a label, we'll skip to the next line
         if raw_op.ends_with(":") {
-            let label = raw_op[..raw_op.len() - 1].to_string();
-            if labels.contains_key(&label) {
-                // TODO: add unit test for this behavior
-                return Err(err!("{}.{}: Label {} already defined", ctxt.filename, ctxt.line, label));
+            if raw_op.starts_with(".") {
+                // sublabel, so the actual label is the concatenation of the current parent label
+                let label = format!("{}>{}", current_parent_label, &raw_op[1..raw_op.len() - 1]);
+                if labels.contains_key(&label) {
+                    // TODO: add unit test for this behavior
+                    return Err(err!("{}.{}: Sublabel {} already defined", ctxt.filename, ctxt.line, label));
+                }
+                labels.insert(label, code.len());
+            } else {
+                // regular label
+                let label = raw_op[..raw_op.len() - 1].to_string();
+                if labels.contains_key(&label) {
+                    // TODO: add unit test for this behavior
+                    return Err(err!("{}.{}: Label {} already defined", ctxt.filename, ctxt.line, label));
+                }
+                labels.insert(label.clone(), code.len());
+                current_parent_label = label;
             }
-            labels.insert(label, code.len());
             continue;
         }
 
@@ -152,9 +166,16 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
                 }
                 let label = label.unwrap();
 
+                // handle sublabel behavior
+                let label = if label.starts_with(".") {
+                    format!("{}>{}", current_parent_label, &label[1..])
+                } else {
+                    label.to_string()
+                };
+
                 // note that currently code.len() will point to the operation that
                 // takes in the addr, so to point to the addr itself we'll need a +1
-                label_refs.insert(code.len() + 1, label.to_string());
+                label_refs.insert(code.len() + 1, label);
 
                 code.push(Code::Op(op));
                 code.push(Code::Addr(0)); // placeholder

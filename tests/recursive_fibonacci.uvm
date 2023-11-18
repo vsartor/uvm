@@ -13,7 +13,7 @@ HALT
 fibonacci:
 	POP	r0		// n (the argument of the function)
 	CMPL	1	r0	// if (n <= 1)
-	JLE	fibonacci_ret_n	//	return n
+	JLE	.ret_n		//	return n
 
 				// otherwise, return fib(n-1) + fib(n-2), so in steps...
 
@@ -37,6 +37,6 @@ fibonacci:
 	PUSH	r0
 	RET
 
-fibonacci_ret_n:
+.ret_n:
 	PUSH	r0
 	RET
