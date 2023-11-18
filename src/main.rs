@@ -1,4 +1,4 @@
-use uvm::{asm, parser, vm};
+use uvm::{asm, parser, serializer, vm};
 
 extern crate clap;
 use clap::{Arg, ArgAction, Command};
@@ -8,50 +8,98 @@ fn main() {
         .version("0.1.0")
         .author("Victhor Sartório <victhor@victhor.io>")
         .about("The Useless Virtual Machine, implemented in Rust")
-        .arg(
-            Arg::new("program_path")
-                .help("Path to the UVM assembly program to be executed")
-                .required(true),
+        .propagate_version(true)
+        .subcommand_required(true)
+        .subcommand(
+            Command::new("run")
+                .about("Runs a UVM program from either source or bytecode")
+                .arg(
+                    Arg::new("program_path")
+                        .required(true)
+                        .help("Path to the program to be run"),
+                )
+                .arg(
+                    Arg::new("binary")
+                        .short('b')
+                        .long("binary")
+                        .action(ArgAction::SetTrue)
+                        .help("Treat the program as a binary bytecode file instead of source code"),
+                )
+                .arg(
+                    Arg::new("batched_output")
+                        .short('o')
+                        .long("batched-output")
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(Arg::new("step").short('s').long("step").action(ArgAction::SetTrue))
+                .arg(Arg::new("debug").short('d').long("debug").action(ArgAction::SetTrue)),
         )
-        .arg(
-            Arg::new("batched_output")
-                .short('b')
-                .long("batched-output")
-                .help("Prints the output of the program only at the end of execution")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("step")
-                .short('s')
-                .long("step")
-                .help("Executes the program in steps, waiting for user input between each step")
-                .action(ArgAction::SetTrue),
+        .subcommand(
+            Command::new("asm")
+                .about("Assembles a UVM program from source code")
+                .arg(
+                    Arg::new("input_path")
+                        .required(true)
+                        .help("Path to the program to be assembled"),
+                )
+                .arg(Arg::new("output_path").required(true).help("Path to the output file")),
         )
         .get_matches();
 
-    let program_path = matches.get_one::<String>("program_path").unwrap();
-    let batched_output = matches.get_flag("batched_output");
-    let step = matches.get_flag("step");
+    match matches.subcommand() {
+        Some(("run", run_matches)) => {
+            // required, so it's safe to unwrap
+            let input_path = run_matches.get_one::<String>("program_path").unwrap().clone();
+            let is_binary = run_matches.get_flag("binary");
+            let is_batched_output = run_matches.get_flag("batched_output");
+            let is_step = run_matches.get_flag("step");
+            let is_debug = run_matches.get_flag("debug");
 
-    run(program_path.clone(), batched_output, step);
+            if is_binary {
+                let code = serializer::disassemble(input_path);
+                if code.is_err() {
+                    let err = code.unwrap_err();
+                    println!("{}", err);
+                    std::process::exit(1);
+                }
+                let code = code.unwrap();
+                run(code, is_batched_output, is_step, is_debug);
+            } else {
+                let code = parser::parse_file(input_path);
+                if code.is_err() {
+                    let err = code.unwrap_err();
+                    println!("{}", err);
+                    std::process::exit(1);
+                }
+                let code = code.unwrap();
+                run(code, is_batched_output, is_step, is_debug);
+            }
+        }
+        Some(("asm", asm_matches)) => {
+            // required, so it's safe to unwrap
+            let input_path = asm_matches.get_one::<String>("input_path").unwrap().clone();
+            let output_path = asm_matches.get_one::<String>("output_path").unwrap().clone();
+
+            let asm_result = serializer::assemble(input_path, output_path);
+            if asm_result.is_err() {
+                println!("{}", asm_result.unwrap_err());
+                std::process::exit(1);
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
-fn run(input_path: String, batched_output: bool, step: bool) {
-    let code = parser::parse_file(input_path);
-    if code.is_err() {
-        let err = code.unwrap_err();
-        println!("{}", err);
-        std::process::exit(1);
+fn run(code: Vec<asm::Code>, is_batched_output: bool, is_step: bool, is_debug: bool) {
+    if is_debug {
+        asm::display_code(&code);
     }
-    let code = code.unwrap();
-
-    asm::display_code(&code);
 
     let mut vm = vm::VM::new(code);
-    if step {
+    if is_step {
         vm = vm.step_by_step();
     }
-    if batched_output {
+    if is_batched_output {
         vm = vm.capture_output();
     }
 
@@ -60,7 +108,7 @@ fn run(input_path: String, batched_output: bool, step: bool) {
         println!("{}", result.unwrap_err());
         std::process::exit(1);
     }
-    if batched_output {
+    if is_batched_output {
         println!("{}", result.unwrap());
     }
 }

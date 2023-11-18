@@ -100,10 +100,18 @@ factorial:
 	RET
 ```
 
+You can run directly from source assembly through
+```./uvm run <source_path>```
+
 ### Serialization
 
 This is still being implemented, but the `serialize` and `deserialize` functions are already implemented.
-They are used to serialize parsed "code" into bytes which can (TBD) be written to disk and then read from them.
+
+You can compile a program to bytecode through
+```./uvm asm <source_path> <output_path>```
+and then run it through
+```./uvm run <output_path> -b```
+with the `-b` flag to indicate that the file is bytecode instead of assembly.
 
 Currently "code" can contain four different "atoms", each serialized through:
 - OpCodes: 1 byte

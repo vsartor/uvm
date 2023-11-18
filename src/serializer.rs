@@ -1,4 +1,9 @@
-use crate::asm::{Code, OpArgT, OpCode, OP_ARG_TYPES};
+use std::io::Write;
+
+use crate::{
+    asm::{Code, OpArgT, OpCode, OP_ARG_TYPES},
+    parser::parse_file,
+};
 
 const UVM_BINARY_SIGNATURE: [u8; 8] = [0x2c, 0xdd, 0x59, 0x9b, 0x96, 0xe1, 0xbf, 0x50];
 const UVM_BINARY_VERSION: u8 = 0x01;
@@ -202,4 +207,57 @@ pub fn deserialize(binary: Vec<u8>) -> Result<Vec<Code>, String> {
     }
 
     Ok(code)
+}
+
+pub fn assemble(input_path: String, output_path: String) -> Result<(), String> {
+    let code = {
+        let parsed = parse_file(input_path);
+        if parsed.is_err() {
+            return Err(parsed.unwrap_err());
+        }
+        parsed.unwrap()
+    };
+
+    let serialized = {
+        let serialized = serialize(&code);
+        if serialized.is_err() {
+            return Err(serialized.unwrap_err());
+        }
+        serialized.unwrap()
+    };
+
+    let mut file = {
+        let file = std::fs::File::create(output_path);
+        if file.is_err() {
+            return Err(file.unwrap_err().to_string());
+        }
+        file.unwrap()
+    };
+
+    let write_op = file.write_all(&serialized);
+    if write_op.is_err() {
+        Err(write_op.unwrap_err().to_string())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn disassemble(input_path: String) -> Result<Vec<Code>, String> {
+    let binary = {
+        let binary = std::fs::read(input_path);
+        if binary.is_err() {
+            return Err(binary.unwrap_err().to_string());
+        }
+        binary.unwrap()
+    };
+
+    let deserialized = {
+        let deserialized = deserialize(binary);
+        if deserialized.is_err() {
+            return Err(deserialized.unwrap_err());
+        }
+        deserialized.unwrap()
+    };
+
+    Ok(deserialized)
 }
