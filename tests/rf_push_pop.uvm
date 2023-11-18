@@ -1,0 +1,31 @@
+SET	10	r0
+SET	11	r1
+SET	12	r2
+SET	13	r3
+SET	14	r4
+SET	15	r5
+SET	16	r6
+SET	17	r7
+SET	18	r8
+SET	19	r9
+
+PUSHRF	8		// First 8 register values should be saved on stack
+			// This does not include r8 and r9!
+
+SET	0	r0
+SET	0	r1
+SET	0	r2
+SET	0	r3
+SET	0	r4
+SET	0	r5
+SET	0	r6
+SET	0	r7
+SET	0	r8
+SET	0	r9
+
+			// At this point everything is zeroes, so we'll test POPRF
+
+POPRF	8		// Now r0 to r7 should be 10 to 17, respectively
+
+DBGREGS
+HALT

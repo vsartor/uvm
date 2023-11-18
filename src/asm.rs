@@ -2,6 +2,10 @@
 pub enum OpCode {
     HALT,
     SET,
+    PUSH,
+    POP,
+    PUSHRF,
+    POPRF,
     ADD,
     ADDL,
     SUB,
@@ -34,6 +38,10 @@ impl std::fmt::Display for OpCode {
             None => match self {
                 OpCode::HALT => write!(f, "HALT"),
                 OpCode::SET => write!(f, "SET"),
+                OpCode::PUSH => write!(f, "PUSH"),
+                OpCode::POP => write!(f, "POP"),
+                OpCode::PUSHRF => write!(f, "PUSHRF"),
+                OpCode::POPRF => write!(f, "POPRF"),
                 OpCode::ADD => write!(f, "ADD"),
                 OpCode::ADDL => write!(f, "ADDL"),
                 OpCode::SUB => write!(f, "SUB"),
@@ -71,6 +79,10 @@ impl std::str::FromStr for OpCode {
         match s {
             "HALT" => Ok(OpCode::HALT),
             "SET" => Ok(OpCode::SET),
+            "PUSH" => Ok(OpCode::PUSH),
+            "POP" => Ok(OpCode::POP),
+            "PUSHRF" => Ok(OpCode::PUSHRF),
+            "POPRF" => Ok(OpCode::POPRF),
             "ADD" => Ok(OpCode::ADD),
             "ADDL" => Ok(OpCode::ADDL),
             "SUB" => Ok(OpCode::SUB),
@@ -107,11 +119,16 @@ pub enum OpArgT {
     IntReg,
     RegReg,
     Addr,
+    Int,
 }
 
-pub const OP_ARG_TYPES: [OpArgT; 26] = [
+pub const OP_ARG_TYPES: [OpArgT; 30] = [
     OpArgT::Nil,    // HALT
     OpArgT::IntReg, // SET
+    OpArgT::Reg,    // PUSH
+    OpArgT::Reg,    // POP
+    OpArgT::Int,    // PUSHRF
+    OpArgT::Int,    // POPRF
     OpArgT::RegReg, // ADD
     OpArgT::IntReg, // ADDL
     OpArgT::RegReg, // SUB
@@ -194,6 +211,10 @@ pub fn display_code(code: &Vec<Code>) {
                 idx += 3;
             }
             OpArgT::Addr => {
+                println!("│ {:04} {} {}", idx, code[idx], code[idx + 1]);
+                idx += 2;
+            }
+            OpArgT::Int => {
                 println!("│ {:04} {} {}", idx, code[idx], code[idx + 1]);
                 idx += 2;
             }

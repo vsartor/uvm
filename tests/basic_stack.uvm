@@ -1,0 +1,8 @@
+SET	10	r1
+SET	20	r2
+PUSH	r1
+PUSH	r2
+POP	r1		// r1 = 20
+POP	r2		// r2 = 10
+DBGREGS
+HALT

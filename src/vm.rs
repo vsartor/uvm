@@ -1,11 +1,14 @@
 use crate::asm::{Code, OpCode};
 
-const NUM_REGISTERS: u8 = 16;
+const NUM_REGISTERS: usize = 16;
+const STACK_SIZE: usize = 256;
 
 pub struct VM {
-    regs: [i64; NUM_REGISTERS as usize],
+    regs: [i64; NUM_REGISTERS],
+    stack: [i64; STACK_SIZE],
     code: Vec<Code>,
     pc: usize,
+    sp: usize,
     cmp: i8,
     step_by_step: bool,
     capture_output: bool,
@@ -19,9 +22,11 @@ struct StepResult {
 impl VM {
     pub fn new(code: Vec<Code>) -> Self {
         Self {
-            regs: [0; NUM_REGISTERS as usize],
+            regs: [0; NUM_REGISTERS],
+            stack: [0; STACK_SIZE],
             code,
             pc: 0,
+            sp: 0,
             cmp: 0,
             step_by_step: false,
             capture_output: false,
@@ -38,7 +43,7 @@ impl VM {
         self
     }
 
-    pub fn get_registers(&self) -> [i64; NUM_REGISTERS as usize] {
+    pub fn get_registers(&self) -> [i64; NUM_REGISTERS] {
         self.regs
     }
 
@@ -59,7 +64,7 @@ impl VM {
     fn consume_reg(&mut self) -> Result<usize, String> {
         match self.code[self.pc] {
             Code::Reg(reg) => {
-                if reg >= NUM_REGISTERS {
+                if reg as usize >= NUM_REGISTERS {
                     return Err(err!("Register {} out of bounds (>{})", reg, NUM_REGISTERS - 1));
                 }
 
@@ -121,6 +126,89 @@ impl VM {
                     reg.unwrap()
                 };
                 self.regs[reg] = val;
+                Ok(res)
+            }
+            OpCode::PUSH => {
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                if self.sp >= STACK_SIZE {
+                    return Err(err!("Stack overflow"));
+                }
+                self.stack[self.sp] = self.regs[reg];
+                self.sp += 1;
+                println!("{}", self.sp);
+                Ok(res)
+            }
+            OpCode::POP => {
+                let reg = {
+                    let reg = self.consume_reg();
+                    if reg.is_err() {
+                        return Err(reg.unwrap_err());
+                    }
+                    reg.unwrap()
+                };
+                if self.sp == 0 {
+                    return Err(err!("Stack underflow"));
+                }
+                self.sp -= 1;
+                self.regs[reg] = self.stack[self.sp];
+                Ok(res)
+            }
+            OpCode::PUSHRF => {
+                let frame_size = {
+                    let val = self.consume_int();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                // validate that the value is actually between 1 and NUM_REGISTERS-1
+                if frame_size < 1 || frame_size as usize >= NUM_REGISTERS {
+                    return Err(err!("PUSHRF received a register frame size of {} out of bounds", frame_size));
+                }
+                let frame_size = frame_size as usize;
+                // validate we indeed have "frame_size" free spaces on stack
+                if self.sp + frame_size >= STACK_SIZE {
+                    return Err(err!("PUSHRF {}: stack overflow", frame_size));
+                }
+
+                // push the first `frame_size` registers from lowest to highest
+                for reg in 0..frame_size {
+                    self.stack[self.sp] = self.regs[reg];
+                    self.sp += 1;
+                }
+
+                Ok(res)
+            }
+            OpCode::POPRF => {
+                let frame_size = {
+                    let val = self.consume_int();
+                    if val.is_err() {
+                        return Err(val.unwrap_err());
+                    }
+                    val.unwrap()
+                };
+                // validate that the value is actually between 1 and NUM_REGISTERS-1
+                if frame_size < 1 || frame_size as usize >= NUM_REGISTERS {
+                    return Err(err!("POPRF received a register frame size of {} out of bounds", frame_size));
+                }
+                let frame_size = frame_size as usize;
+                // validate we indeed have "frame_size" filled spaces on stack
+                if self.sp < frame_size {
+                    return Err(err!("POPRF {}: stack underflow", frame_size));
+                }
+
+                // pop the first `frame_size` registers from highest to lowest (opposite of PUSHRF)
+                for reg in (0..frame_size).rev() {
+                    self.sp -= 1;
+                    self.regs[reg] = self.stack[self.sp];
+                }
+
                 Ok(res)
             }
             OpCode::ADD => {

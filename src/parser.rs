@@ -159,6 +159,23 @@ fn parse_string(raw_code: &String, mut ctxt: Ctxt) -> Result<Vec<Code>, String> 
                 code.push(Code::Op(op));
                 code.push(Code::Addr(0)); // placeholder
             }
+            OpArgT::Int => {
+                let int = {
+                    let int = consume_int(&mut parts, op, &ctxt);
+                    if int.is_err() {
+                        return Err(int.unwrap_err());
+                    }
+                    int.unwrap()
+                };
+
+                let line_is_over_chck = validate_line_is_over(&mut parts, op, &ctxt);
+                if line_is_over_chck.is_err() {
+                    return Err(line_is_over_chck.unwrap_err());
+                }
+
+                code.push(Code::Op(op));
+                code.push(Code::Int(int));
+            }
         }
     }
 

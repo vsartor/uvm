@@ -71,3 +71,39 @@ fn test_conditional_jumps() {
     }
     assert_eq!(vm.get_registers()[7], 1);
 }
+
+#[test]
+fn test_basic_stack() {
+    let code = uvm::parser::parse_file("tests/basic_stack.uvm".to_string());
+    if !code.is_ok() {
+        println!("{}", code.unwrap_err());
+        assert!(false);
+        return;
+    }
+    let mut vm = uvm::vm::VM::new(code.unwrap());
+    let result = vm.run();
+    if !result.is_ok() {
+        println!("{}", result.unwrap_err());
+        assert!(false);
+        return;
+    }
+    assert_eq!(vm.get_registers()[..3], [0, 20, 10]);
+}
+
+#[test]
+fn test_rf_stack_ops() {
+    let code = uvm::parser::parse_file("tests/rf_push_pop.uvm".to_string());
+    if !code.is_ok() {
+        println!("{}", code.unwrap_err());
+        assert!(false);
+        return;
+    }
+    let mut vm = uvm::vm::VM::new(code.unwrap());
+    let result = vm.run();
+    if !result.is_ok() {
+        println!("{}", result.unwrap_err());
+        assert!(false);
+        return;
+    }
+    assert_eq!(vm.get_registers()[..10], [10, 11, 12, 13, 14, 15, 16, 17, 0, 0]);
+}
